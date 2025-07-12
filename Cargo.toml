@@ -1,0 +1,9 @@
+[package]
+name = "steam_cleaner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winreg = "0.10" # Stellt sicher, dass diese Version mit deinen Anforderungen kompatibel ist
+uuid = { version = "1.0", features = ["v4"] } # "v4" Feature ist notwendig für Uuid::new_v4()
+rand = "0.8" # Füge diese Zeile hinzu. Version 0.8 ist gängig.
