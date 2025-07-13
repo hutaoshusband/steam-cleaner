@@ -52,7 +52,7 @@ Additional locations are cleared to minimize tracking and local history:
 ## Does this prevent Red Trust in CS2?
 
 **No.**  
-Steam Cleaner only removes traces that could theoretically influence trust scores for *new accounts*.  
+Steam Cleaner only removes traces that influences trust scores for *new accounts*. When your old account was flagged by VAC before.
 If your new account receives Red Trust due to **cheating, griefing, or suspicious behavior**, that's entirely your responsibility.
 
 Steam Cleaner **does not provide protection** against VAC or Trust Factor downgrades caused by actual gameplay behavior or reports.
