@@ -3,8 +3,10 @@ use eframe::{
     App,
 };
 
-use crate::{is_elevated, restart_as_admin, run_all};
-use crate::{registry_cleaner, mac_spoofer, volumeid_wrapper, file_cleaner, sid_spoofer};
+use crate::{
+    is_elevated, restart_as_admin, run_all,
+    registry_cleaner, mac_spoofer, volumeid_wrapper, file_cleaner, sid_spoofer,
+};
 
 #[derive(Default)]
 pub struct CleanerApp {
@@ -17,40 +19,79 @@ pub struct CleanerApp {
 }
 
 impl App for CleanerApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(Visuals::dark());
 
-        // Icon setzen entfernt
+
+        const TITLE_FONT_SIZE: f32 = 30.0;
+        const SUBTITLE_FONT_SIZE: f32 = 18.0;
+        const BUTTON_HEIGHT: f32 = 48.0;
+        const BUTTON_WIDTH: f32 = 180.0;
+        const GROUP_PADDING: f32 = 14.0;
+        const SPACING_LARGE: f32 = 28.0;
+        const SPACING_MEDIUM: f32 = 14.0;
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.with_layout(egui::Layout::top_down(Align::Center), |ui| {
-                ui.add_space(10.0);
-                ui.heading(
-                    RichText::new("Steam Cleaner by HUTAOSHUSBAND")
-                        .font(FontId::proportional(28.0))
-                        .color(Color32::LIGHT_GREEN),
-                );
-                ui.add_space(5.0);
+            ui.vertical_centered(|ui| {
+                ui.add_space(SPACING_LARGE);
+
+
                 ui.label(
-                    RichText::new("Select the operations to run")
-                        .font(FontId::proportional(18.0))
-                        .color(Color32::LIGHT_BLUE),
+                    RichText::new("Steam Cleaner by HUTAOSHUSBAND")
+                        .font(FontId::proportional(TITLE_FONT_SIZE))
+                        .color(Color32::from_rgb(150, 255, 150))
+                        .strong(),
                 );
-                ui.add_space(15.0);
 
-                ui.checkbox(&mut self.clean_registry, "🧹  Clean registry (MachineGuid, HWProfileGuid)");
-                ui.checkbox(&mut self.spoof_mac, "🌐  Spoof MAC address");
-                ui.checkbox(&mut self.change_volume_id, "💽  Change Volume ID (C:)");
-                ui.checkbox(&mut self.clean_cache, "🗑️  Clean cache files (Steam, CS2, DXCache, etc.)");
-                ui.checkbox(&mut self.spoof_hkcu, "🧬  Spoof HKCU suspicious keys");
-                ui.checkbox(&mut self.run_all, "🚀  Run ALL");
+                ui.add_space(SPACING_MEDIUM);
 
-                ui.add_space(20.0);
+
+                ui.label(
+                    RichText::new("Select the operations you want to run")
+                        .font(FontId::proportional(SUBTITLE_FONT_SIZE))
+                        .color(Color32::from_rgb(180, 200, 255)),
+                );
+
+                ui.add_space(SPACING_LARGE);
+
+
+                egui::Frame::group(&egui::Style::default())
+                    .fill(Color32::from_rgb(25, 25, 25))
+                    .rounding(egui::Rounding::same(12.0))
+                    .stroke(egui::Stroke::new(1.0, Color32::from_gray(70))) 
+                    .inner_margin(egui::Margin::same(GROUP_PADDING))
+                    .show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.set_min_width(420.0); 
+
+                            ui.checkbox(&mut self.clean_registry, "Clean registry (MachineGuid & HWProfileGuid)");
+                            ui.checkbox(&mut self.spoof_mac, "Spoof MAC address");
+                            ui.checkbox(&mut self.change_volume_id, "Change Volume ID (C:)");
+                            ui.checkbox(&mut self.clean_cache, "Clean cache files (Steam, CS2, DXCache, etc.)");
+                            ui.checkbox(&mut self.spoof_hkcu, "Spoof suspicious HKCU keys");
+
+                            ui.separator();
+
+                            ui.checkbox(&mut self.run_all, RichText::new("Run ALL").strong());
+                        });
+                    });
+
+                ui.add_space(SPACING_LARGE);
+
 
                 ui.horizontal_centered(|ui| {
-                    if ui.add_sized([140.0, 45.0], egui::Button::new("Execute")).clicked() {
+                    let execute_button = egui::Button::new(
+                        RichText::new("Execute")
+                            .font(FontId::proportional(18.0))
+                            .color(Color32::BLACK),
+                    )
+                    .fill(Color32::from_rgb(80, 230, 80))
+                    .min_size(egui::vec2(BUTTON_WIDTH, BUTTON_HEIGHT))
+                    .rounding(egui::Rounding::same(14.0));
+
+                    if ui.add(execute_button).clicked() {
                         if !is_elevated() {
-                            println!("[!] Not running as administrator. Attempting elevation...");
+                            eprintln!("[!] Not running as administrator. Trying restart with elevation...");
                             restart_as_admin();
                             return;
                         }
@@ -94,7 +135,7 @@ impl App for CleanerApp {
                     }
                 });
 
-                ui.add_space(20.0);
+                ui.add_space(SPACING_MEDIUM);
             });
         });
     }
