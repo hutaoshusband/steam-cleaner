@@ -3,15 +3,29 @@ name = "steam_cleaner"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+panic = 'abort'
+strip = true
+lto = true
+
 [dependencies]
+iced = { version = "0.12", features = ["tokio", "advanced", "multi-window"] }
+# Asynchrone Laufzeitumgebung
+tokio = { version = "1", features = ["full"] }
 winreg = "0.10" # Stellt sicher, dass diese Version mit deinen Anforderungen kompatibel ist
 uuid = { version = "1.0", features = ["v4"] } # "v4" Feature ist notwendig für Uuid::new_v4()
 rand = "0.8" # Füge diese Zeile hinzu. Version 0.8 ist gängig.
 eframe = "0.26.0"
-windows-sys = { version = "0.52.0", features = [
-    "Win32_UI_WindowsAndMessaging",  # Für MessageBoxW
-    "Win32_Foundation"               # Für HWND
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_SystemInformation",
+    "Win32_Security",
 ] }
+
 widestring = "1.0"
 image = "0.25"
 raw-window-handle = "0.4"
+
+[build-dependencies]
+embed-resource = "2.4"
