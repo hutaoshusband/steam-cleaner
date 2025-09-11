@@ -49,7 +49,6 @@
 // src/main.rs
 
 
-#![windows_subsystem = "windows"]
 
 mod core;
 mod ui;
