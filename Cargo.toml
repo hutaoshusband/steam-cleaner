@@ -29,3 +29,4 @@ raw-window-handle = "0.4"
 
 [build-dependencies]
 embed-resource = "2.4"
+winres = "0.1"
