@@ -96,6 +96,8 @@ let appdata = std::env::var("APPDATA")
 let userprofile = std::env::var("USERPROFILE")
     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
+let locallow = local.replace("Local", "LocalLow");
+
 
 let _possible_steam_paths = [
     "C:\\Program Files (x86)\\Steam",
@@ -176,6 +178,12 @@ for file in &login_files {
         format!("{}\\AppData\\Local\\Packages", userprofile),
         format!("{}\\AppData\\Local\\Microsoft\\Windows\\Caches", userprofile),
         format!("{}\\AppData\\Local\\Microsoft\\Windows\\Explorer", userprofile),
+        // New paths for intensified cleaning
+        format!("{}\\depotcache", steam_root),
+        format!("{}\\Steam\\htmlcache", local),
+        format!("{}\\Steam\\cefdata", local),
+        format!("{}\\Steam\\logged_in_user", local),
+        format!("{}\\Valve\\Steam", locallow),
     ];
 
     for path in &paths {
