@@ -176,8 +176,15 @@ impl CleanerApp {
             .width(450)
             .height(150);
 
+        let disclaimer_text = "WARNING: This tool can lead to data loss (game saves, etc.) and will remove accounts from this PC. Use at your own risk. A restart is recommended after cleaning.";
+        let disclaimer = container(text(disclaimer_text).size(14))
+            .padding(10)
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
+
         let content = Column::new()
             .push(title_bar)
+            .push(Space::with_height(Length::Fixed(10.0)))
+            .push(disclaimer)
             .push(Space::with_height(Length::Fixed(20.0)))
             .push(options_box)
             .push(Space::with_height(Length::Fixed(20.0)))
