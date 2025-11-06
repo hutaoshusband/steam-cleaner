@@ -48,18 +48,18 @@
 
 // src/main.rs
 
-
-
 mod core;
 mod ui;
-
 
 use iced::{Sandbox, Settings};
 
 fn main() -> iced::Result {
-    if !core::privileges::is_elevated() {
-        core::privileges::show_admin_error_dialog();
-        std::process::exit(1);
+    #[cfg(windows)]
+    {
+        if !core::privileges::is_elevated() {
+            core::privileges::show_admin_error_dialog();
+            std::process::exit(1);
+        }
     }
 
     ui::app::CleanerApp::run(Settings::default())
