@@ -1,16 +1,19 @@
-use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_WRITE, HKEY_CURRENT_USER};
+// src/core/registry_cleaner.rs
+
+use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_WRITE, HKEY_CURRENT_USER, HKEY_USERS};
 use winreg::RegKey;
 use uuid::Uuid;
 use rand::Rng;
 use std::io;
 use std::time::Duration;
 use std::thread::sleep;
-use super::file_cleaner::kill_process; // 'super' geht von registry_cleaner.rs zu core/mod.rs
-use std::process::Command; 
+use crate::core::file_cleaner::kill_process;
+use std::process::Command;
 
-
-pub fn clean_registry() -> io::Result<()> {
-    let actions: Vec<fn() -> io::Result<()>> = vec![
+pub fn clean_registry(dry_run: bool) -> io::Result<Vec<String>> {
+    let mut logs = Vec::new();
+    
+    let actions: Vec<fn(bool, &mut Vec<String>) -> io::Result<()>> = vec![
         spoof_machine_guid,
         spoof_hw_profile_guid,
         spoof_windows_nt_info,
@@ -18,53 +21,70 @@ pub fn clean_registry() -> io::Result<()> {
         spoof_computer_name,
     ];
 
-    for (i, action) in actions.iter().enumerate() {
-        println!("[*] Running registry action #{}...", i + 1);
-        match action() {
-            Ok(_) => println!("[+] Action #{} completed successfully.", i + 1),
-            Err(e) => eprintln!("[-] Error in registry action #{}: {}", i + 1, e),
+    for action in actions {
+        action(dry_run, &mut logs)?;
+    }
+
+    if !dry_run {
+        logs.push("[*] Restarting explorer.exe...".to_string());
+        match Command::new("explorer").spawn() {
+            Ok(_) => logs.push("[+] explorer.exe started.".to_string()),
+            Err(e) => logs.push(format!("[-] Failed to start explorer.exe: {}", e)),
         }
     }
 
-    println!("[*] All registry spoofing actions processed.");
+    Ok(logs)
+}
 
-    println!("[*] Restarting explorer.exe...");
-    match Command::new("explorer").spawn() {
-        Ok(_) => println!("[+] explorer.exe started."),
-        Err(e) => eprintln!("[-] Failed to start explorer.exe: {}", e),
+pub fn clean_aggressive_registry(dry_run: bool) -> io::Result<Vec<String>> {
+    let mut logs = Vec::new();
+
+    let aggressive_actions: Vec<fn(bool, &mut Vec<String>) -> io::Result<()>> = vec![
+        delete_more_valve_keys,
+        clean_system_caches,
+    ];
+
+    for action in aggressive_actions {
+        action(dry_run, &mut logs)?;
     }
 
-    Ok(())
+    Ok(logs)
 }
 
-fn spoof_machine_guid() -> io::Result<()> {
+fn spoof_machine_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let new_guid = Uuid::new_v4().to_string();
+    let message = format!("[Registry] Would spoof MachineGuid to: {}", new_guid);
+    if dry_run {
+        logs.push(message);
+        return Ok(());
+    }
+    
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let crypto = hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Cryptography", KEY_WRITE)?;
-    let new_guid = Uuid::new_v4().to_string();
     crypto.set_value("MachineGuid", &new_guid)?;
-    println!("[+] MachineGuid spoofed: {}", new_guid);
+    logs.push(format!("[Registry] MachineGuid spoofed: {}", new_guid));
     Ok(())
 }
 
-fn spoof_hw_profile_guid() -> io::Result<()> {
+fn spoof_hw_profile_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let new_hw_guid = format!("{{{}}}", Uuid::new_v4());
+    let message = format!("[Registry] Would spoof HwProfileGuid to: {}", new_hw_guid);
+    if dry_run {
+        logs.push(message);
+        return Ok(());
+    }
+
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let profile = hklm.open_subkey_with_flags(
         "SYSTEM\\CurrentControlSet\\Control\\IDConfigDB\\Hardware Profiles\\0001",
         KEY_WRITE,
     )?;
-    let new_hw_guid = format!("{{{}}}", Uuid::new_v4());
     profile.set_value("HwProfileGuid", &new_hw_guid)?;
-    println!("[+] HwProfileGuid spoofed: {}", new_hw_guid);
+    logs.push(format!("[Registry] HwProfileGuid spoofed: {}", new_hw_guid));
     Ok(())
 }
 
-fn spoof_windows_nt_info() -> io::Result<()> {
-    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let current_version = hklm.open_subkey_with_flags(
-        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-        KEY_WRITE,
-    )?;
-
+fn spoof_windows_nt_info(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let product_id = format!(
         "{}-{}-{}-{}",
         rand_digits(5),
@@ -72,23 +92,38 @@ fn spoof_windows_nt_info() -> io::Result<()> {
         rand_digits(7),
         rand_digits(5)
     );
-    current_version.set_value("ProductId", &product_id)?;
-    println!("[+] ProductId spoofed: {}", product_id);
-
     let owner = rand_string(8);
     let org = rand_string(10);
+    let install_date: u32 = rand::thread_rng().gen_range(1_600_000_000..1_700_000_000);
+
+    if dry_run {
+        logs.push(format!("[Registry] Would spoof ProductId to: {}", product_id));
+        logs.push(format!("[Registry] Would set RegisteredOwner to: {}", owner));
+        logs.push(format!("[Registry] Would set RegisteredOrganization to: {}", org));
+        logs.push(format!("[Registry] Would spoof InstallDate to: {}", install_date));
+        return Ok(());
+    }
+    
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let current_version = hklm.open_subkey_with_flags(
+        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+        KEY_WRITE,
+    )?;
+
+    current_version.set_value("ProductId", &product_id)?;
+    logs.push(format!("[Registry] ProductId spoofed: {}", product_id));
+
     current_version.set_value("RegisteredOwner", &owner)?;
     current_version.set_value("RegisteredOrganization", &org)?;
-    println!("[+] RegisteredOwner: {}, RegisteredOrganization: {}", owner, org);
+    logs.push(format!("[Registry] RegisteredOwner: {}, RegisteredOrganization: {}", owner, org));
 
-    let install_date: u32 = rand::thread_rng().gen_range(1_600_000_000..1_700_000_000);
     current_version.set_value("InstallDate", &install_date)?;
-    println!("[+] InstallDate spoofed: {}", install_date);
+    logs.push(format!("[Registry] InstallDate spoofed: {}", install_date));
 
     Ok(())
 }
 
-fn delete_steam_registry() -> io::Result<()> {
+fn delete_steam_registry(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let processes = [
         "steam.exe",
         "steamwebhelper.exe",
@@ -97,39 +132,108 @@ fn delete_steam_registry() -> io::Result<()> {
     ];
 
     for proc in processes.iter() {
-        kill_process(proc);
+        kill_process(proc, dry_run, logs);
+    }
+    kill_process("explorer.exe", dry_run, logs);
+
+    if !dry_run {
+        sleep(Duration::from_secs(10));
     }
 
-    kill_process("explorer.exe");
-
-    sleep(Duration::from_secs(10));
+    let key_path = "Software\\Valve\\Steam";
+    if dry_run {
+        logs.push(format!("[Registry] Would delete Steam registry key: {}", key_path));
+        return Ok(());
+    }
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let key_path = "Software\\Valve\\Steam";
-
     match hkcu.delete_subkey_all(key_path) {
-        Ok(_) => println!("[+] Deleted Steam registry key: {}", key_path),
-        Err(_) => println!(
-            "[-] Steam registry key not found or could not be deleted: {}",
+        Ok(_) => logs.push(format!("[Registry] Deleted Steam registry key: {}", key_path)),
+        Err(_) => logs.push(format!(
+            "[Registry] Steam registry key not found or could not be deleted: {}",
             key_path
-        ),
+        )),
     }
 
     Ok(())
 }
 
+fn spoof_computer_name(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let new_name = rand_string(10);
+    if dry_run {
+        logs.push(format!("[Registry] Would spoof Hostname to: {}", new_name));
+        return Ok(());
+    }
 
-fn spoof_computer_name() -> io::Result<()> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let tcpip_params = hklm.open_subkey_with_flags(
         "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters",
         KEY_WRITE,
     )?;
-
-    let new_name = rand_string(10);
     tcpip_params.set_value("Hostname", &new_name)?;
     tcpip_params.set_value("NV Hostname", &new_name)?;
-    println!("[+] Computer name spoofed: {}", new_name);
+    logs.push(format!("[Registry] Computer name spoofed: {}", new_name));
+
+    Ok(())
+}
+
+fn delete_more_valve_keys(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let hku = RegKey::predef(HKEY_USERS);
+
+    let paths_to_delete = vec![
+        "SOFTWARE\\Valve".to_string(),
+        "SOFTWARE\\Wow6432Node\\Valve".to_string(),
+    ];
+
+    for path in paths_to_delete {
+        if dry_run {
+            logs.push(format!("[Registry] Would delete HKLM\\{}", path));
+        } else {
+            if let Err(e) = hklm.delete_subkey_all(&path) {
+                logs.push(format!("[Registry] Could not delete HKLM\\{}: {}", path, e));
+            } else {
+                logs.push(format!("[Registry] Deleted HKLM\\{}", path));
+            }
+        }
+    }
+
+    for sid in hku.enum_keys().filter_map(Result::ok) {
+        let path = format!("{}\\{}", sid, "Software\\Valve\\Steam");
+        if dry_run {
+            logs.push(format!("[Registry] Would delete HKU\\{}", path));
+        } else {
+            if let Err(e) = hku.delete_subkey_all(&path) {
+                logs.push(format!("[Registry] Could not delete HKU\\{}: {}", path, e));
+            } else {
+                logs.push(format!("[Registry] Deleted HKU\\{}", path));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn clean_system_caches(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let paths_to_delete = vec![
+        "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\AppCompatCache",
+        "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\ShimCache",
+        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags",
+    ];
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+
+    for path in paths_to_delete {
+        if dry_run {
+            logs.push(format!("[Registry] Would delete HKLM\\{}", path));
+        } else {
+            if let Err(e) = hklm.delete_subkey_all(&path) {
+                logs.push(format!("[Registry] Could not delete HKLM\\{}: {}", path, e));
+            } else {
+                logs.push(format!("[Registry] Deleted HKLM\\{}", path));
+            }
+        }
+    }
 
     Ok(())
 }
@@ -149,4 +253,3 @@ fn rand_string(len: usize) -> String {
         })
         .collect()
 }
-
