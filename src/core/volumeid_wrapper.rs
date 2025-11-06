@@ -1,3 +1,5 @@
+// src/core/volumeid_wrapper.rs
+
 use std::process::Command;
 use std::path::Path;
 use rand::Rng;
@@ -5,10 +7,15 @@ use winreg::enums::*;
 use winreg::RegKey;
 use std::io;
 
-pub fn change_volume_id(drive_letter: &str) -> std::io::Result<()> {
+pub fn change_volume_id(drive_letter: &str, dry_run: bool) -> io::Result<String> {
+    let new_id = generate_random_volume_id();
+    
+    if dry_run {
+        return Ok(format!("[Volume ID] Would change Volume ID of {} to {}", drive_letter, new_id));
+    }
+
     accept_volumeid_eula()?;
 
-    let new_id = generate_random_volume_id();
     let tool_paths = vec![
         Path::new("volumeid64.exe"),
         Path::new("volumeid.exe"),
@@ -24,34 +31,24 @@ pub fn change_volume_id(drive_letter: &str) -> std::io::Result<()> {
             "No working volumeid(.exe|64.exe) found.",
         ))?;
 
-    println!("[*] Trying to change the Volume ID of {} to {}", drive_letter, new_id);
-
     let output = Command::new(volumeid_path)
         .args([&format!("{}:", drive_letter), &new_id])
         .output()?; 
 
     if output.status.success() {
-        println!("[+] Volume ID changed to {} for {}", new_id, drive_letter);
+        Ok(format!("[+] Volume ID changed to {} for {}", new_id, drive_letter))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-
-        eprintln!("[!] Failed to change Volume ID:");
-        if !stdout.is_empty() {
-            eprintln!("    Stdout: {}", stdout);
-        }
-        if !stderr.is_empty() {
-            eprintln!("    Stderr: {}", stderr);
-        }
-        eprintln!("    Exit Code: {:?}", output.status.code());
-
-        return Err(std::io::Error::new(
+        let error_message = format!(
+            "[!] Failed to change Volume ID:\n    Stdout: {}\n    Stderr: {}\n    Exit Code: {:?}",
+            stdout, stderr, output.status.code()
+        );
+        Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "VolumeId change failed.",
-        ));
+            error_message,
+        ))
     }
-
-    Ok(())
 }
 
 fn generate_random_volume_id() -> String {
@@ -63,8 +60,11 @@ fn generate_random_volume_id() -> String {
 
 fn accept_volumeid_eula() -> io::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let path = "Ss";
-    let (key, _) = hkcu.create_subkey(path)?;
+    // The key path is "Software\Sysinternals\VolumeId"
+    // We need to create the subkey "Software\Sysinternals" first
+    let sysinternals_path = "Software\\Sysinternals";
+    let (sysinternals_key, _) = hkcu.create_subkey(sysinternals_path)?;
+    let (key, _) = sysinternals_key.create_subkey("VolumeId")?;
     key.set_value("EulaAccepted", &1u32)?;
     Ok(())
 }
