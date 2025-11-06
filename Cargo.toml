@@ -10,22 +10,23 @@ lto = true
 
 [dependencies]
 iced = { version = "0.12", features = ["tokio", "advanced", "multi-window"] }
-# Asynchrone Laufzeitumgebung
 tokio = { version = "1", features = ["full"] }
-winreg = "0.10" # Stellt sicher, dass diese Version mit deinen Anforderungen kompatibel ist
-uuid = { version = "1.0", features = ["v4"] } # "v4" Feature ist notwendig für Uuid::new_v4()
-rand = "0.8" # Füge diese Zeile hinzu. Version 0.8 ist gängig.
-eframe = "0.26.0"
+uuid = { version = "1.0", features = ["v4"] }
+rand = "0.8"
+zip = "0.6"
+walkdir = "2"
+tinyfiledialogs = "3.9"
+widestring = "1.0"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.10"
 windows-sys = { version = "0.52", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_SystemInformation",
     "Win32_Security",
 ] }
-
-widestring = "1.0"
-image = "0.25"
-raw-window-handle = "0.4"
+rfd = "0.14"
 
 [build-dependencies]
 embed-resource = "2.4"
