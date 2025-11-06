@@ -22,25 +22,25 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     if options.spoof_system_ids {
         match registry_cleaner::clean_registry(options.dry_run) {
             Ok(messages) => results.extend(messages),
-            Err(e) => results.push(format!("❌ Error spoofing System IDs: {}", e)),
+            Err(e) => results.push(format!("[Error] Error spoofing System IDs: {}", e)),
         }
         match sid_spoofer::spoof_hkcu(options.dry_run) {
             Ok(messages) => results.extend(messages),
-            Err(e) => results.push(format!("❌ Error spoofing HKCU keys: {}", e)),
+            Err(e) => results.push(format!("[Error] Error spoofing HKCU keys: {}", e)),
         }
     }
 
     if options.spoof_mac {
         match mac_spoofer::spoof_mac_all(options.dry_run) {
             Ok(messages) => results.extend(messages),
-            Err(e) => results.push(format!("❌ Error spoofing MAC addresses: {}", e)),
+            Err(e) => results.push(format!("[Error] Error spoofing MAC addresses: {}", e)),
         }
     }
 
     if options.spoof_volume_id {
         match volumeid_wrapper::change_volume_id("C", options.dry_run) {
             Ok(message) => results.push(message),
-            Err(e) => results.push(format!("❌ Error changing Volume ID: {}", e)),
+            Err(e) => results.push(format!("[Error] Error changing Volume ID: {}", e)),
         }
     }
     
@@ -49,29 +49,29 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         let result = tokio::task::spawn_blocking(move || file_cleaner::clean_cache(dry_run)).await;
         match result {
             Ok(Ok(messages)) => results.extend(messages),
-            Ok(Err(e)) => results.push(format!("❌ Error cleaning Steam: {}", e)),
-            Err(_) => results.push("❌ Critical error in Steam cleaning task.".to_string()),
+            Ok(Err(e)) => results.push(format!("[Error] Error cleaning Steam: {}", e)),
+            Err(_) => results.push("[Error] Critical error in Steam cleaning task.".to_string()),
         }
     }
 
     if options.clean_aggressive {
         match registry_cleaner::clean_aggressive_registry(options.dry_run) {
             Ok(messages) => results.extend(messages),
-            Err(e) => results.push(format!("❌ Error with aggressive registry cleaning: {}", e)),
+            Err(e) => results.push(format!("[Error] Error with aggressive registry cleaning: {}", e)),
         }
     }
 
     if results.len() == 1 && options.dry_run {
-        results.push("ℹ️ No operations selected.".to_string());
+        results.push("[Info] No operations selected.".to_string());
     } else if results.is_empty() {
-        results.push("ℹ️ No operations selected.".to_string());
+        results.push("[Info] No operations selected.".to_string());
     }
 
     if options.dry_run {
         results.push("--- END OF SIMULATION ---".to_string());
     } else {
         results.push("-----------------------------------".to_string());
-        results.push("✅ All tasks completed. A restart is recommended.".to_string());
+        results.push("[Success] All tasks completed. A restart is recommended.".to_string());
     }
 
     results
