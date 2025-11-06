@@ -1,63 +1,77 @@
 // src/core/executor.rs
 
 use crate::core::{file_cleaner, mac_spoofer, registry_cleaner, sid_spoofer, volumeid_wrapper};
-use std::io;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CleaningOptions {
-    pub clean_registry: bool,
+    pub spoof_system_ids: bool,
     pub spoof_mac: bool,
-    pub change_volume_id: bool,
-    pub clean_cache: bool,
-    pub spoof_hkcu: bool,
+    pub spoof_volume_id: bool,
+    pub clean_steam: bool,
+    pub clean_aggressive: bool,
+    pub dry_run: bool,
 }
 
 pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     let mut results = Vec::new();
-    println!("Starte asynchrone Bereinigung mit Optionen: {:?}", options);
+    if options.dry_run {
+        results.push("--- SIMULATION MODE (DRY RUN) ---".to_string());
+    }
+    println!("Starting asynchronous cleaning with options: {:?}", options);
 
-    if options.clean_registry {
-        match registry_cleaner::clean_registry() {
-            Ok(_) => results.push("✅ Registry erfolgreich bereinigt.".to_string()),
-            Err(e) => results.push(format!("❌ Fehler bei Registry-Bereinigung: {}", e)),
+    if options.spoof_system_ids {
+        match registry_cleaner::clean_registry(options.dry_run) {
+            Ok(messages) => results.extend(messages),
+            Err(e) => results.push(format!("❌ Error spoofing System IDs: {}", e)),
+        }
+        match sid_spoofer::spoof_hkcu(options.dry_run) {
+            Ok(messages) => results.extend(messages),
+            Err(e) => results.push(format!("❌ Error spoofing HKCU keys: {}", e)),
         }
     }
 
     if options.spoof_mac {
-        match mac_spoofer::spoof_mac_all() {
-            Ok(_) => results.push("✅ MAC-Adressen erfolgreich geändert.".to_string()),
-            Err(e) => results.push(format!("❌ Fehler bei MAC-Spoofing: {}", e)),
+        match mac_spoofer::spoof_mac_all(options.dry_run) {
+            Ok(messages) => results.extend(messages),
+            Err(e) => results.push(format!("❌ Error spoofing MAC addresses: {}", e)),
         }
     }
 
-    if options.change_volume_id {
-        match volumeid_wrapper::change_volume_id("C") {
-            Ok(_) => results.push("✅ Volume ID erfolgreich geändert.".to_string()),
-            Err(e) => results.push(format!("❌ Fehler bei Volume ID-Änderung: {}", e)),
+    if options.spoof_volume_id {
+        match volumeid_wrapper::change_volume_id("C", options.dry_run) {
+            Ok(message) => results.push(message),
+            Err(e) => results.push(format!("❌ Error changing Volume ID: {}", e)),
         }
     }
     
-    if options.clean_cache {
-        let result = tokio::task::spawn_blocking(file_cleaner::clean_cache).await;
+    if options.clean_steam {
+        let dry_run = options.dry_run;
+        let result = tokio::task::spawn_blocking(move || file_cleaner::clean_cache(dry_run)).await;
         match result {
-            Ok(Ok(_)) => results.push("✅ Cache-Dateien erfolgreich gelöscht.".to_string()),
-            Ok(Err(e)) => results.push(format!("❌ Fehler bei Cache-Bereinigung: {}", e)),
-            Err(_) => results.push("❌ Kritischer Fehler im Cache-Bereinigungs-Task.".to_string()),
+            Ok(Ok(messages)) => results.extend(messages),
+            Ok(Err(e)) => results.push(format!("❌ Error cleaning Steam: {}", e)),
+            Err(_) => results.push("❌ Critical error in Steam cleaning task.".to_string()),
         }
     }
 
-    if options.spoof_hkcu {
-        match sid_spoofer::spoof_hkcu() {
-            Ok(_) => results.push("✅ HKCU-Schlüssel erfolgreich bereinigt.".to_string()),
-            Err(e) => results.push(format!("❌ Fehler bei HKCU-Bereinigung: {}", e)),
+    if options.clean_aggressive {
+        match registry_cleaner::clean_aggressive_registry(options.dry_run) {
+            Ok(messages) => results.extend(messages),
+            Err(e) => results.push(format!("❌ Error with aggressive registry cleaning: {}", e)),
         }
     }
 
-    if results.is_empty() {
-        results.push("ℹ️ Keine Operationen ausgewählt.".to_string());
+    if results.len() == 1 && options.dry_run {
+        results.push("ℹ️ No operations selected.".to_string());
+    } else if results.is_empty() {
+        results.push("ℹ️ No operations selected.".to_string());
+    }
+
+    if options.dry_run {
+        results.push("--- END OF SIMULATION ---".to_string());
     } else {
         results.push("-----------------------------------".to_string());
-        results.push("✅ Alle Aufgaben abgeschlossen. Ein Neustart wird empfohlen.".to_string());
+        results.push("✅ All tasks completed. A restart is recommended.".to_string());
     }
 
     results
