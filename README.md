@@ -1,3 +1,5 @@
+![Modern System Cleaner GUI](https://github.com/hutaoshusband/steam-cleaner/blob/main/assets/update.png?raw=true)
+
 # Steam Cleaner (Rust GUI Tool)
 
 ⚠️ **This project is intended for educational and testing purposes only. You use it at your own risk.**
@@ -27,8 +29,7 @@ The following identifiers can be randomized or spoofed:
 
 ## Does this prevent Red Trust in CS2?
 
-**No.**  
-Steam Cleaner only removes traces that influences trust scores for *new accounts*. When your old account was flagged by VAC before.
+**No.** Steam Cleaner only removes traces that influences trust scores for *new accounts*. When your old account was flagged by VAC before.
 If your new account receives Red Trust due to **cheating, griefing, or suspicious behavior**, that's entirely your responsibility.
 
 Steam Cleaner **does not provide protection** against VAC or Trust Factor downgrades caused by actual gameplay behavior or reports.
@@ -46,18 +47,13 @@ Steam Cleaner **does not provide protection** against VAC or Trust Factor downgr
 ## Installation & Build
 
 ```bash
-git clone https://github.com/hutaoshusband/steam_cleaner.git
+git clone [https://github.com/hutaoshusband/steam_cleaner.git](https://github.com/hutaoshusband/steam_cleaner.git)
 cd steam_cleaner
 cargo build --release
 ```
 
 ## DISCLAIMER
+This tool does not modify firmware (e.g. BIOS, SMBIOS, etc.) No kernel-level operations are performed This is not a cheat, but a cleanup utility.
 
-This tool does not modify firmware (e.g. BIOS, SMBIOS, etc.)
-No kernel-level operations are performed
-This is not a cheat, but a cleanup utility.
-
-## Lisense
-
-License
-MIT License – See LICENSE for full terms.
+Lisense
+License MIT License – See LICENSE for full terms.
