@@ -1,7 +1,5 @@
-// src/ui/app.rs
-
 use iced::widget::{button, column, container, scrollable, text, toggler, Column, Row, Space};
-use iced::{Element, Length, Sandbox, Theme};
+use iced::{window, Application, Command, Element, Length, Theme};
 use tinyfiledialogs as tfd;
 
 use crate::core::backup;
@@ -38,36 +36,64 @@ pub enum Message {
     ToggleAggressive(bool),
     ToggleDryRun(bool),
     Execute,
+    CleaningFinished(Vec<String>),
     Backup,
     OpenInspector,
+    InspectorLoaded(SystemInfo),
     CloseInspector,
+    CloseWindow,
+    WindowDragged,
 }
 
-impl Sandbox for CleanerApp {
+impl Application for CleanerApp {
     type Message = Message;
+    type Theme = Theme;
+    type Executor = iced::executor::Default;
+    type Flags = ();
 
-    fn new() -> Self {
-        Self {
-            state: State::Idle,
-            options: CleaningOptions::default(),
-            log_messages: vec!["Select the desired operations.".to_string()],
-            inspector_open: false,
-            inspector_state: InspectorState::default(),
-        }
+    fn new(_flags: ()) -> (Self, Command<Message>) {
+        (
+            Self {
+                state: State::Idle,
+                options: CleaningOptions::default(),
+                log_messages: vec!["[*] Ready. Select options and click Execute.".to_string()],
+                inspector_open: false,
+                inspector_state: InspectorState::default(),
+            },
+            Command::none(),
+        )
     }
 
     fn title(&self) -> String {
         "Modern Cleaner".to_string()
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::ToggleSystemIds(value) => self.options.spoof_system_ids = value,
-            Message::ToggleMac(value) => self.options.spoof_mac = value,
-            Message::ToggleVolumeId(value) => self.options.spoof_volume_id = value,
-            Message::ToggleSteam(value) => self.options.clean_steam = value,
-            Message::ToggleAggressive(value) => self.options.clean_aggressive = value,
-            Message::ToggleDryRun(value) => self.options.dry_run = value,
+            Message::ToggleSystemIds(value) => {
+                self.options.spoof_system_ids = value;
+                Command::none()
+            }
+            Message::ToggleMac(value) => {
+                self.options.spoof_mac = value;
+                Command::none()
+            }
+            Message::ToggleVolumeId(value) => {
+                self.options.spoof_volume_id = value;
+                Command::none()
+            }
+            Message::ToggleSteam(value) => {
+                self.options.clean_steam = value;
+                Command::none()
+            }
+            Message::ToggleAggressive(value) => {
+                self.options.clean_aggressive = value;
+                Command::none()
+            }
+            Message::ToggleDryRun(value) => {
+                self.options.dry_run = value;
+                Command::none()
+            }
             Message::Execute => {
                 if self.state == State::Idle {
                     if self.options.clean_aggressive {
@@ -79,36 +105,49 @@ impl Sandbox for CleanerApp {
                         );
                         if confirmation == tfd::YesNo::No {
                             self.log_messages.push("Aggressive cleaning cancelled.".to_string());
-                            return;
+                            return Command::none();
                         }
                     }
 
                     self.state = State::Cleaning;
                     self.log_messages = vec!["[*] Starting cleaning...".to_string()];
-
-                    let results = tokio::runtime::Runtime::new()
-                        .unwrap()
-                        .block_on(run_all_selected(self.options));
-                    self.log_messages = results;
-                    self.state = State::Idle;
+                    Command::perform(run_all_selected(self.options), Message::CleaningFinished)
+                } else {
+                    Command::none()
                 }
+            }
+            Message::CleaningFinished(results) => {
+                self.state = State::Idle;
+                self.log_messages = results;
+                Command::none()
             }
             Message::Backup => {
                 match backup::create_backup() {
                     Ok(message) => self.log_messages.push(message),
                     Err(e) => self.log_messages.push(format!("Backup failed: {}", e)),
                 }
+                Command::none()
             }
             Message::OpenInspector => {
                 self.inspector_open = true;
                 self.inspector_state.is_loading = true;
-                let info = tokio::runtime::Runtime::new()
-                    .unwrap()
-                    .block_on(gather_system_info());
+                Command::perform(gather_system_info(), Message::InspectorLoaded)
+            }
+            Message::InspectorLoaded(info) => {
                 self.inspector_state.info = info;
                 self.inspector_state.is_loading = false;
+                Command::none()
             }
-            Message::CloseInspector => self.inspector_open = false,
+            Message::CloseInspector => {
+                self.inspector_open = false;
+                Command::none()
+            }
+            Message::CloseWindow => {
+                std::process::exit(0);
+            }
+            Message::WindowDragged => {
+                window::drag(window::Id::MAIN)
+            }
         }
     }
 
@@ -121,7 +160,7 @@ impl Sandbox for CleanerApp {
     }
 
     fn theme(&self) -> Theme {
-        Theme::Dark
+        Theme::Light
     }
 }
 
@@ -130,109 +169,141 @@ impl CleanerApp {
         fn make_toggler<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message) -> Element<'a, Message> {
             toggler(Some(label.to_string()), value, msg)
                 .style(iced::theme::Toggler::Custom(Box::new(style::CustomTogglerStyle)))
-                .width(280)
+                .width(Length::Fill)
                 .text_size(16)
                 .into()
         }
 
-        let inspector_button = button(text("🔍 Inspector"))
+        // --- Title Bar ---
+        let inspector_button = button(text("Inspector").size(14))
             .on_press(Message::OpenInspector)
+            .padding(8)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
+        let close_button = button(text("X").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .on_press(Message::CloseWindow)
+            .padding(8)
+            .width(Length::Fixed(40.0))
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        // Make the title text draggable by wrapping it in a transparent button
+        let title_text = button(text("Modern System Cleaner").size(24).style(style::TITLE_COLOR))
+            .on_press(Message::WindowDragged)
+            .style(iced::theme::Button::Custom(Box::new(style::TransparentButtonStyle)));
+
         let title_bar = Row::new()
-            .spacing(20)
+            .spacing(10)
             .align_items(iced::Alignment::Center)
-            .push(Space::with_width(Length::Fill))
-            .push(text("Modern System Cleaner").size(32).style(style::TITLE_COLOR))
+            .push(Space::with_width(Length::Fixed(15.0)))
+            .push(title_text)
             .push(Space::with_width(Length::Fill))
             .push(inspector_button)
-            .push(Space::with_width(Length::Fixed(20.0)));
-        
+            .push(Space::with_width(Length::Fixed(10.0)))
+            .push(close_button)
+            .push(Space::with_width(Length::Fixed(15.0)));
+
+        // --- Left Panel: Options ---
         let system_spoofing_options = column![
-            text("System-Spoofing").size(20),
+            text("System-Spoofing").size(18).style(style::TITLE_COLOR),
             make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds),
             make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac),
             make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId),
         ]
-        .spacing(15)
-        .padding(20);
+        .spacing(12)
+        .padding(15);
 
         let steam_cleaning_options = column![
-            text("Steam-Reinigung").size(20),
+            text("Steam-Reinigung").size(18).style(style::TITLE_COLOR),
             make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam),
         ]
-        .spacing(15)
-        .padding(20);
+        .spacing(12)
+        .padding(15);
 
         let aggressive_cleaning_options = column![
-            text("Aggressive Reinigung").size(20),
+            text("Aggressive Reinigung").size(18).style(style::TITLE_COLOR),
             make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive),
         ]
-        .spacing(15)
-        .padding(20);
+        .spacing(12)
+        .padding(15);
 
-        let options_box = container(
-            column![]
-                .push(system_spoofing_options)
-                .push(steam_cleaning_options)
-                .push(aggressive_cleaning_options)
-        )
-        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
-        
-        let (button_text, on_press_message) = match self.state {
-            State::Idle => ("Execute", Some(Message::Execute)),
-            State::Cleaning => ("Running...", None),
+        let options_content = column![
+            system_spoofing_options,
+            steam_cleaning_options,
+            aggressive_cleaning_options
+        ]
+        .spacing(10);
+
+        let options_box = container(options_content)
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+            .padding(10)
+            .width(Length::Fill);
+
+        // Action Buttons
+        let (button_text_str, on_press_message) = match self.state {
+            State::Idle => ("Execute Cleaning", Some(Message::Execute)),
+            State::Cleaning => ("Cleaning in Progress...", None),
         };
 
-        let mut execute_button = button(text(button_text).size(20))
+        let mut execute_button = button(text(button_text_str).size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(15)
+            .width(Length::Fill)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
         
         if let Some(msg) = on_press_message {
             execute_button = execute_button.on_press(msg);
         }
 
-        let backup_button = button(text("Backup Steam Data").size(20))
+        let backup_button = button(text("Backup Steam Data").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(15)
+            .width(Length::Fill)
             .on_press(Message::Backup)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
+        let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun);
+
+        let left_panel = Column::new()
+            .push(options_box)
+            .push(Space::with_height(Length::Fixed(20.0)))
+            .push(container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle))))
+            .push(Space::with_height(Length::Fixed(20.0)))
+            .push(execute_button)
+            .push(Space::with_height(Length::Fixed(10.0)))
+            .push(backup_button)
+            .spacing(10)
+            .width(Length::FillPortion(1)) // 1/3 width
+            .padding(20);
+
+        // --- Right Panel: Console Output ---
         let log_output = self.log_messages.iter().fold(Column::new().spacing(5), |col, msg| {
-            col.push(text(msg.clone()))
+            col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(14))
         });
         
-        let status_box = container(scrollable(log_output))
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
-            .padding(10)
-            .width(450)
-            .height(150);
+        let console_box = container(scrollable(log_output))
+            .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle)))
+            .padding(15)
+            .width(Length::Fill)
+            .height(Length::Fill);
 
-        let disclaimer_text = "WARNING: This tool can lead to data loss (game saves, etc.) and will remove accounts from this PC. Use at your own risk. A restart is recommended after cleaning.";
-        let disclaimer = container(text(disclaimer_text).size(14))
-            .padding(10)
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
+        let right_panel = Column::new()
+            .push(text("Verbose Log Output").size(18).style(style::TITLE_COLOR))
+            .push(Space::with_height(Length::Fixed(10.0)))
+            .push(console_box)
+            .width(Length::FillPortion(2)) // 2/3 width
+            .padding(20);
+
+        // --- Main Layout ---
+        let main_content = Row::new()
+            .push(left_panel)
+            .push(right_panel)
+            .height(Length::Fill);
 
         let content = Column::new()
             .push(title_bar)
-            .push(Space::with_height(Length::Fixed(10.0)))
-            .push(disclaimer)
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(options_box)
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun))
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(Row::new().spacing(20).push(execute_button).push(backup_button))
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(status_box)
-            .spacing(20)
-            .align_items(iced::Alignment::Center)
-            .max_width(600);
+            .push(main_content);
 
         container(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_x()
-            .center_y()
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
             .into()
     }

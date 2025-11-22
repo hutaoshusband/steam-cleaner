@@ -20,7 +20,7 @@
 // ====================----======--------==-----==++=-----:--===============--------
 // ====================---==+*#*##*+++=-===+**#*++====-----:--==============-=--=---
 // =========================+*==+=+****+=---*##*%###=---------===-======-=-----=----    // Cleaner made by HUTAOSHUSBAND
-// =====-==---==========*===+++%%*###@#++=--=##*+=====-----=--==--------------------    // Image represents Fred.
+// ====-==---==========*===+++%%*###@#++=--=##*+=====-----=--==--------------------    // Image represents Fred.
 // =====---=============+=+=++*+==+*#*+++=---==+**+=-----=-=+-==--------------------
 // -======================+=====++++*++++==---=+===------===--=---=-----------------
 // --=====================+======++*#*++==--==+#*=-------===-----=------------------
@@ -47,11 +47,12 @@
 
 
 // src/main.rs
+#![windows_subsystem = "windows"]
 
 mod core;
 mod ui;
 
-use iced::{Sandbox, Settings};
+use iced::{Application, Settings};
 
 fn main() -> iced::Result {
     #[cfg(windows)]
@@ -62,5 +63,17 @@ fn main() -> iced::Result {
         }
     }
 
-    ui::app::CleanerApp::run(Settings::default())
+    // Configure window for iOS-style transparency
+    let window_settings = iced::window::Settings {
+        decorations: false,  // Remove Windows title bar
+        transparent: true,    // Enable transparency
+        size: iced::Size::new(1200.0, 800.0), // Larger start size
+        resizable: true,      // Allow resizing
+        ..Default::default()
+    };
+
+    ui::app::CleanerApp::run(Settings {
+        window: window_settings,
+        ..Default::default()
+    })
 }
