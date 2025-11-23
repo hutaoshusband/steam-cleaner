@@ -12,7 +12,7 @@ pub mod volumeid_wrapper;
 pub mod privileges;
 #[cfg(windows)]
 pub mod inspector;
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 pub mod backup;
 
 pub mod executor;
@@ -86,7 +86,7 @@ pub mod inspector {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(all(not(windows), not(test)))]
 pub mod backup {
     pub fn create_backup() -> Result<String, String> {
         Err("Backup is only supported on Windows.".to_string())

@@ -21,6 +21,7 @@ fn find_steam_root() -> Option<PathBuf> {
     None
 }
 
+#[cfg(windows)]
 pub fn create_backup() -> Result<String, String> {
     let steam_root = find_steam_root().ok_or("Steam installation not found.")?;
     let config_path = steam_root.join("config");
@@ -54,20 +55,23 @@ pub fn create_backup() -> Result<String, String> {
     }
 }
 
+#[cfg(not(windows))]
+pub fn create_backup() -> Result<String, String> {
+    Err("Backup is only supported on Windows.".to_string())
+}
+
 fn add_dir_to_zip<W: Write + std::io::Seek>(
     zip: &mut ZipWriter<W>,
     dir: &Path,
-    _base_in_zip: &str,
+    base_in_zip: &str,
     options: FileOptions,
 ) -> Result<(), String> {
     for entry in walkdir::WalkDir::new(dir) {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
-        let name = path
-            .strip_prefix(dir.parent().unwrap())
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let relative_path = path.strip_prefix(dir).map_err(|e| e.to_string())?;
+        let name_path = Path::new(base_in_zip).join(relative_path);
+        let name = name_path.to_str().unwrap();
 
         if path.is_file() {
             zip.start_file(name, options).map_err(|e| e.to_string())?;
@@ -81,4 +85,52 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use zip::ZipArchive;
+    use std::fs;
+
+    #[test]
+    fn test_add_dir_to_zip_ignores_base_in_zip() {
+        // Setup
+        let temp_dir = std::env::temp_dir().join("test_steam_cleaner_backup_repro");
+        if temp_dir.exists() {
+            fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        fs::create_dir_all(&temp_dir).unwrap();
+        
+        let source_dir = temp_dir.join("source_data");
+        fs::create_dir(&source_dir).unwrap();
+        fs::write(source_dir.join("test_file.txt"), "content").unwrap();
+
+        // Use Cursor<Vec<u8>> to own the buffer
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = FileOptions::default().compression_method(CompressionMethod::Stored);
+
+        // Execute
+        let result = add_dir_to_zip(&mut zip, &source_dir, "target_data", options);
+        
+        assert!(result.is_ok());
+        let cursor = zip.finish().unwrap();
+        let buffer = cursor.into_inner();
+
+        // Verify
+        let mut archive = ZipArchive::new(Cursor::new(buffer)).unwrap();
+        
+        let file_names: Vec<_> = archive.file_names().map(|s| s.to_string()).collect();
+        println!("Files in zip: {:?}", file_names);
+        
+        let found_target = file_names.iter().any(|n| n.starts_with("target_data"));
+        let found_source = file_names.iter().any(|n| n.starts_with("source_data"));
+
+        // Cleanup
+        fs::remove_dir_all(&temp_dir).unwrap();
+
+        assert!(found_target, "Bug reproduced: 'target_data' prefix not found in zip. Found: {:?}", file_names);
+        assert!(!found_source, "Bug reproduced: 'source_data' prefix found in zip, should have been renamed.");
+    }
 }
