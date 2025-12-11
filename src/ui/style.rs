@@ -4,8 +4,8 @@ use iced::widget::{button, container, toggler};
 use iced::{border, Color, Vector};
 
 // iOS-Style Light Glassmorphism Palette
-// Window background - light semi-transparent (not pure transparent to avoid black)
-pub const BACKGROUND: Color = Color::from_rgba(0.94, 0.96, 0.98, 0.92);
+// Window background - light opaque
+pub const BACKGROUND: Color = Color::from_rgb(0.94, 0.96, 0.98);
 
 // Glass containers - translucent white/light
 pub const GLASS_BG: Color = Color::from_rgba(0.98, 0.98, 1.0, 0.75);
@@ -149,32 +149,3 @@ impl container::StyleSheet for ConsoleContainerStyle {
     }
 }
 
-// Transparent button for draggable title bar
-pub struct TransparentButtonStyle;
-impl button::StyleSheet for TransparentButtonStyle {
-    type Style = iced::Theme;
-    fn active(&self, _style: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: None,
-            border: border::Border::default(),
-            text_color: TEXT,
-            ..Default::default()
-        }
-    }
-
-    fn hovered(&self, _style: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.1).into()),
-            border: border::Border::default(),
-            text_color: TEXT,
-            ..Default::default()
-        }
-    }
-
-    fn pressed(&self, _style: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.1).into()),
-            ..Default::default()
-        }
-    }
-}
