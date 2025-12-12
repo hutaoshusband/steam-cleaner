@@ -1,5 +1,5 @@
 use iced::widget::{button, column, container, scrollable, text, toggler, Column, Row, Space};
-use iced::{window, Application, Command, Element, Length, Theme};
+use iced::{Application, Command, Element, Length, Theme};
 use tinyfiledialogs as tfd;
 
 use crate::core::backup;
@@ -41,8 +41,6 @@ pub enum Message {
     OpenInspector,
     InspectorLoaded(SystemInfo),
     CloseInspector,
-    CloseWindow,
-    WindowDragged,
 }
 
 impl Application for CleanerApp {
@@ -142,12 +140,6 @@ impl Application for CleanerApp {
                 self.inspector_open = false;
                 Command::none()
             }
-            Message::CloseWindow => {
-                std::process::exit(0);
-            }
-            Message::WindowDragged => {
-                window::drag(window::Id::MAIN)
-            }
         }
     }
 
@@ -173,34 +165,6 @@ impl CleanerApp {
                 .text_size(16)
                 .into()
         }
-
-        // --- Title Bar ---
-        let inspector_button = button(text("Inspector").size(14))
-            .on_press(Message::OpenInspector)
-            .padding(8)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
-
-        let close_button = button(text("X").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .on_press(Message::CloseWindow)
-            .padding(8)
-            .width(Length::Fixed(40.0))
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
-
-        // Make the title text draggable by wrapping it in a transparent button
-        let title_text = button(text("Modern System Cleaner").size(24).style(style::TITLE_COLOR))
-            .on_press(Message::WindowDragged)
-            .style(iced::theme::Button::Custom(Box::new(style::TransparentButtonStyle)));
-
-        let title_bar = Row::new()
-            .spacing(10)
-            .align_items(iced::Alignment::Center)
-            .push(Space::with_width(Length::Fixed(15.0)))
-            .push(title_text)
-            .push(Space::with_width(Length::Fill))
-            .push(inspector_button)
-            .push(Space::with_width(Length::Fixed(10.0)))
-            .push(close_button)
-            .push(Space::with_width(Length::Fixed(15.0)));
 
         // --- Left Panel: Options ---
         let system_spoofing_options = column![
@@ -239,6 +203,12 @@ impl CleanerApp {
             .width(Length::Fill);
 
         // Action Buttons
+        let inspector_button = button(text("Inspector").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
+            .width(Length::Fill)
+            .on_press(Message::OpenInspector)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
         let (button_text_str, on_press_message) = match self.state {
             State::Idle => ("Execute Cleaning", Some(Message::Execute)),
             State::Cleaning => ("Cleaning in Progress...", None),
@@ -269,6 +239,8 @@ impl CleanerApp {
             .push(execute_button)
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(backup_button)
+            .push(Space::with_height(Length::Fixed(10.0)))
+            .push(inspector_button)
             .spacing(10)
             .width(Length::FillPortion(1)) // 1/3 width
             .padding(20);
@@ -297,11 +269,7 @@ impl CleanerApp {
             .push(right_panel)
             .height(Length::Fill);
 
-        let content = Column::new()
-            .push(title_bar)
-            .push(main_content);
-
-        container(content)
+        container(main_content)
             .width(Length::Fill)
             .height(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))

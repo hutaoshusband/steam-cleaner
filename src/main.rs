@@ -63,11 +63,13 @@ fn main() -> iced::Result {
         }
     }
 
-    // Configure window for iOS-style transparency
+    // Configure window settings
     let window_settings = iced::window::Settings {
-        decorations: false,  // Remove Windows title bar
-        transparent: true,    // Enable transparency
+        decorations: true,  // Use native title bar for resizing/controls
+        transparent: false,   // Opaque background with native decorations
         size: iced::Size::new(1200.0, 800.0), // Larger start size
+        position: iced::window::Position::Centered,
+        min_size: Some(iced::Size::new(900.0, 600.0)),
         resizable: true,      // Allow resizing
         ..Default::default()
     };
