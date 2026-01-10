@@ -68,3 +68,47 @@ fn accept_volumeid_eula() -> io::Result<()> {
     key.set_value("EulaAccepted", &1u32)?;
     Ok(())
 }
+
+/// Wendet eine spezifische Volume ID aus einem Profil an
+pub fn change_volume_id_to_specific(drive_letter: &str, volume_id: &str, dry_run: bool) -> io::Result<String> {
+    if dry_run {
+        return Ok(format!("[Volume ID] Would change Volume ID of {} to {}", drive_letter, volume_id));
+    }
+
+    accept_volumeid_eula()?;
+
+    let tool_paths = vec![
+        Path::new("volumeid64.exe"),
+        Path::new("volumeid.exe"),
+        Path::new("./tools/volumeid64.exe"),
+        Path::new("./tools/volumeid.exe"),
+    ];
+
+    let volumeid_path = tool_paths
+        .into_iter()
+        .find(|p| p.exists())
+        .ok_or_else(|| std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "No working volumeid(.exe|64.exe) found.",
+        ))?;
+
+    let output = Command::new(volumeid_path)
+        .args([&format!("{}:", drive_letter), volume_id])
+        .output()?; 
+
+    if output.status.success() {
+        Ok(format!("[+] Volume ID changed to {} for {} (from profile)", volume_id, drive_letter))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let error_message = format!(
+            "[!] Failed to change Volume ID:\n    Stdout: {}\n    Stderr: {}\n    Exit Code: {:?}",
+            stdout, stderr, output.status.code()
+        );
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            error_message,
+        ))
+    }
+}
+

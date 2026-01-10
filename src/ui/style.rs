@@ -3,26 +3,17 @@
 use iced::widget::{button, container, toggler};
 use iced::{border, Color, Vector};
 
-// iOS-Style Light Glassmorphism Palette
-// Window background - light opaque
+// Light theme palette
 pub const BACKGROUND: Color = Color::from_rgb(0.94, 0.96, 0.98);
-
-// Glass containers - translucent white/light
 pub const GLASS_BG: Color = Color::from_rgba(0.98, 0.98, 1.0, 0.75);
 pub const GLASS_BORDER: Color = Color::from_rgba(0.85, 0.85, 0.9, 0.4);
-
-// Text colors - dark for light backgrounds
 pub const TEXT: Color = Color::from_rgb(0.1, 0.1, 0.15);
 pub const SUBTEXT: Color = Color::from_rgb(0.4, 0.4, 0.45);
-
-// iOS accent colors
-pub const IOS_BLUE: Color = Color::from_rgb(0.0, 0.478, 1.0); // #007AFF
+pub const IOS_BLUE: Color = Color::from_rgb(0.0, 0.478, 1.0);
 pub const IOS_BLUE_HOVER: Color = Color::from_rgb(0.2, 0.58, 1.0);
-pub const IOS_GREEN: Color = Color::from_rgb(0.204, 0.78, 0.349); // #34C759
-
+pub const IOS_GREEN: Color = Color::from_rgb(0.204, 0.78, 0.349);
 pub const TITLE_COLOR: Color = TEXT;
 
-// Main Window - transparent background
 pub struct MainWindowStyle;
 impl container::StyleSheet for MainWindowStyle {
     type Style = iced::Theme;
@@ -35,7 +26,6 @@ impl container::StyleSheet for MainWindowStyle {
     }
 }
 
-// Glass containers - iOS frosted glass effect
 pub struct OptionsBoxStyle;
 impl container::StyleSheet for OptionsBoxStyle {
     type Style = iced::Theme;
@@ -57,7 +47,6 @@ impl container::StyleSheet for OptionsBoxStyle {
     }
 }
 
-// iOS-style buttons
 pub struct PrimaryButtonStyle;
 impl button::StyleSheet for PrimaryButtonStyle {
     type Style = iced::Theme;
@@ -100,7 +89,90 @@ impl button::StyleSheet for PrimaryButtonStyle {
     }
 }
 
-// iOS-style toggles (green when active)
+pub struct SuccessButtonStyle;
+impl button::StyleSheet for SuccessButtonStyle {
+    type Style = iced::Theme;
+    fn active(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(IOS_GREEN.into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(0.0, 2.0),
+            ..Default::default()
+        }
+    }
+
+    fn hovered(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(Color::from_rgb(0.25, 0.85, 0.4).into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(0.0, 4.0),
+            ..Default::default()
+        }
+    }
+
+    fn pressed(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(Color::from_rgb(0.15, 0.65, 0.3).into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            ..Default::default()
+        }
+    }
+}
+
+pub struct DangerButtonStyle;
+impl button::StyleSheet for DangerButtonStyle {
+    type Style = iced::Theme;
+    fn active(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(Color::from_rgb(1.0, 0.23, 0.19).into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(0.0, 2.0),
+            ..Default::default()
+        }
+    }
+
+    fn hovered(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(Color::from_rgb(1.0, 0.35, 0.30).into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(0.0, 4.0),
+            ..Default::default()
+        }
+    }
+
+    fn pressed(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(Color::from_rgb(0.85, 0.18, 0.15).into()),
+            border: border::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            text_color: Color::WHITE,
+            ..Default::default()
+        }
+    }
+}
+
 pub struct CustomTogglerStyle;
 impl toggler::StyleSheet for CustomTogglerStyle {
     type Style = iced::Theme;
@@ -131,21 +203,19 @@ impl toggler::StyleSheet for CustomTogglerStyle {
     }
 }
 
-// Console/Log container style - dark terminal look
 pub struct ConsoleContainerStyle;
 impl container::StyleSheet for ConsoleContainerStyle {
     type Style = iced::Theme;
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
-            background: Some(Color::from_rgb(0.1, 0.1, 0.1).into()), // Almost black
+            background: Some(Color::from_rgb(0.1, 0.1, 0.1).into()),
             border: border::Border {
                 color: Color::from_rgb(0.3, 0.3, 0.3),
                 width: 1.0,
                 radius: 8.0.into(),
             },
-            text_color: Some(Color::from_rgb(0.2, 0.8, 0.2)), // Terminal green text
+            text_color: Some(Color::from_rgb(0.2, 0.8, 0.2)),
             ..Default::default()
         }
     }
 }
-

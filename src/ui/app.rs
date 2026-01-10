@@ -1,9 +1,12 @@
-use iced::widget::{button, column, container, scrollable, text, toggler, Column, Row, Space};
+// src/ui/app.rs
+
+use iced::widget::{button, column, container, pick_list, scrollable, text, text_input, toggler, Column, Row, Space};
 use iced::{Application, Command, Element, Length, Theme};
 use tinyfiledialogs as tfd;
 
 use crate::core::backup;
-use crate::core::executor::{run_all_selected, CleaningOptions};
+use crate::core::executor::{apply_hardware_profile, run_all_selected, CleaningOptions};
+use crate::core::hardware_profile::{HardwareProfile, ProfileManager};
 use crate::core::inspector::{gather_system_info, SystemInfo};
 use crate::ui::style;
 
@@ -13,12 +16,23 @@ pub struct CleanerApp {
     log_messages: Vec<String>,
     inspector_open: bool,
     inspector_state: InspectorState,
+    profile_manager: ProfileManager,
+    profile_state: ProfileState,
 }
 
 #[derive(Default)]
 struct InspectorState {
     is_loading: bool,
     info: SystemInfo,
+}
+
+#[derive(Default, Clone)]
+struct ProfileState {
+    profile_names: Vec<String>,
+    selected_profile: Option<String>,
+    new_profile_name: String,
+    is_applying: bool,
+    status_message: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -41,6 +55,14 @@ pub enum Message {
     OpenInspector,
     InspectorLoaded(SystemInfo),
     CloseInspector,
+    ProfileSelected(String),
+    NewProfileNameChanged(String),
+    SaveCurrentAsProfile,
+    ProfileSaved(Result<String, String>),
+    ApplySelectedProfile,
+    ProfileApplied(Vec<String>),
+    DeleteSelectedProfile,
+    RefreshProfiles,
 }
 
 impl Application for CleanerApp {
@@ -50,6 +72,9 @@ impl Application for CleanerApp {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
+        let profile_manager = ProfileManager::load().unwrap_or_default();
+        let profile_names = profile_manager.profile_names();
+        
         (
             Self {
                 state: State::Idle,
@@ -57,6 +82,14 @@ impl Application for CleanerApp {
                 log_messages: vec!["[*] Ready. Select options and click Execute.".to_string()],
                 inspector_open: false,
                 inspector_state: InspectorState::default(),
+                profile_manager,
+                profile_state: ProfileState {
+                    profile_names,
+                    selected_profile: None,
+                    new_profile_name: String::new(),
+                    is_applying: false,
+                    status_message: None,
+                },
             },
             Command::none(),
         )
@@ -129,6 +162,7 @@ impl Application for CleanerApp {
             Message::OpenInspector => {
                 self.inspector_open = true;
                 self.inspector_state.is_loading = true;
+                self.profile_state.profile_names = self.profile_manager.profile_names();
                 Command::perform(gather_system_info(), Message::InspectorLoaded)
             }
             Message::InspectorLoaded(info) => {
@@ -138,6 +172,108 @@ impl Application for CleanerApp {
             }
             Message::CloseInspector => {
                 self.inspector_open = false;
+                Command::none()
+            }
+            Message::ProfileSelected(name) => {
+                self.profile_state.selected_profile = Some(name);
+                self.profile_state.status_message = None;
+                Command::none()
+            }
+            Message::NewProfileNameChanged(name) => {
+                self.profile_state.new_profile_name = name;
+                Command::none()
+            }
+            Message::SaveCurrentAsProfile => {
+                let name = self.profile_state.new_profile_name.trim().to_string();
+                if name.is_empty() {
+                    self.profile_state.status_message = Some("[!] Please enter a profile name.".to_string());
+                    return Command::none();
+                }
+                
+                Command::perform(
+                    async move {
+                        match HardwareProfile::snapshot_current(name.clone()) {
+                            Ok(profile) => {
+                                let mut manager = ProfileManager::load().unwrap_or_default();
+                                manager.add_or_update_profile(profile);
+                                match manager.save() {
+                                    Ok(_) => Ok(name),
+                                    Err(e) => Err(format!("Failed to save: {}", e)),
+                                }
+                            }
+                            Err(e) => Err(format!("Failed to snapshot: {}", e)),
+                        }
+                    },
+                    Message::ProfileSaved,
+                )
+            }
+            Message::ProfileSaved(result) => {
+                match result {
+                    Ok(name) => {
+                        self.profile_state.status_message = Some(format!("[+] Profile '{}' saved!", name));
+                        self.profile_state.new_profile_name.clear();
+                        self.profile_manager = ProfileManager::load().unwrap_or_default();
+                        self.profile_state.profile_names = self.profile_manager.profile_names();
+                        self.profile_state.selected_profile = Some(name);
+                    }
+                    Err(e) => {
+                        self.profile_state.status_message = Some(format!("[-] {}", e));
+                    }
+                }
+                Command::none()
+            }
+            Message::ApplySelectedProfile => {
+                if let Some(name) = &self.profile_state.selected_profile {
+                    if let Some(profile) = self.profile_manager.get_profile(name) {
+                        self.profile_state.is_applying = true;
+                        let profile_clone = profile.clone();
+                        let dry_run = self.options.dry_run;
+                        
+                        return Command::perform(
+                            apply_hardware_profile(profile_clone, dry_run),
+                            Message::ProfileApplied,
+                        );
+                    } else {
+                        self.profile_state.status_message = Some("[!] Profile not found.".to_string());
+                    }
+                } else {
+                    self.profile_state.status_message = Some("[!] Please select a profile first.".to_string());
+                }
+                Command::none()
+            }
+            Message::ProfileApplied(results) => {
+                self.profile_state.is_applying = false;
+                self.log_messages = results;
+                self.profile_state.status_message = Some("[+] Profile applied! Check log for details.".to_string());
+                Command::none()
+            }
+            Message::DeleteSelectedProfile => {
+                if let Some(name) = &self.profile_state.selected_profile.clone() {
+                    let confirmation = tfd::message_box_yes_no(
+                        "Delete Profile",
+                        &format!("Are you sure you want to delete the profile '{}'?", name),
+                        tfd::MessageBoxIcon::Question,
+                        tfd::YesNo::No,
+                    );
+                    if confirmation == tfd::YesNo::Yes {
+                        self.profile_manager.remove_profile(name);
+                        if let Err(e) = self.profile_manager.save() {
+                            self.profile_state.status_message = Some(format!("[-] Failed to save: {}", e));
+                        } else {
+                            self.profile_state.status_message = Some(format!("[+] Profile '{}' deleted.", name));
+                            self.profile_state.profile_names = self.profile_manager.profile_names();
+                            self.profile_state.selected_profile = None;
+                        }
+                    }
+                } else {
+                    self.profile_state.status_message = Some("[!] Please select a profile first.".to_string());
+                }
+                Command::none()
+            }
+            Message::RefreshProfiles => {
+                self.profile_manager = ProfileManager::load().unwrap_or_default();
+                self.profile_state.profile_names = self.profile_manager.profile_names();
+                self.profile_state.status_message = Some("[*] Profiles refreshed.".to_string());
                 Command::none()
             }
         }
@@ -166,7 +302,6 @@ impl CleanerApp {
                 .into()
         }
 
-        // --- Left Panel: Options ---
         let system_spoofing_options = column![
             text("System-Spoofing").size(18).style(style::TITLE_COLOR),
             make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds),
@@ -202,8 +337,7 @@ impl CleanerApp {
             .padding(10)
             .width(Length::Fill);
 
-        // Action Buttons
-        let inspector_button = button(text("Inspector").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let inspector_button = button(text("Inspector & Profiles").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenInspector)
@@ -242,10 +376,9 @@ impl CleanerApp {
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(inspector_button)
             .spacing(10)
-            .width(Length::FillPortion(1)) // 1/3 width
+            .width(Length::FillPortion(1))
             .padding(20);
 
-        // --- Right Panel: Console Output ---
         let log_output = self.log_messages.iter().fold(Column::new().spacing(5), |col, msg| {
             col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(14))
         });
@@ -260,10 +393,9 @@ impl CleanerApp {
             .push(text("Verbose Log Output").size(18).style(style::TITLE_COLOR))
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(console_box)
-            .width(Length::FillPortion(2)) // 2/3 width
+            .width(Length::FillPortion(2))
             .padding(20);
 
-        // --- Main Layout ---
         let main_content = Row::new()
             .push(left_panel)
             .push(right_panel)
@@ -277,49 +409,166 @@ impl CleanerApp {
     }
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
-        let content = if self.inspector_state.is_loading {
+        // System Info
+        let system_info_section = if self.inspector_state.is_loading {
             Column::new().push(text("Loading system information..."))
         } else {
             let info = &self.inspector_state.info;
             let info_col = column![
+                text("Current System Hardware IDs").size(20).style(style::TITLE_COLOR),
+                Space::with_height(Length::Fixed(10.0)),
                 text(format!("Machine GUID: {}", info.machine_guid)),
                 text(format!("Product ID: {}", info.product_id)),
                 text(format!("Computer Name: {}", info.computer_name)),
                 text(format!("Volume ID (C:): {}", info.volume_id)),
                 Space::with_height(Length::Fixed(10.0)),
-                text("Found MAC Addresses:").size(18),
+                text("MAC Addresses:").size(16),
             ]
-            .spacing(10);
+            .spacing(8);
             
-            let adapters_col = info.network_adapters.iter().fold(Column::new().spacing(5), |col, (_desc, mac)| {
-                col.push(text(format!("  - {}", mac)))
-            });
-
-            let steam_files_col = info.steam_login_files.iter().fold(Column::new().spacing(5), |col, file| {
-                col.push(text(format!("  - {}", file)))
+            let adapters_col = info.network_adapters.iter().fold(Column::new().spacing(3), |col, (_desc, mac)| {
+                col.push(text(format!("  - {}", mac)).size(14))
             });
 
             Column::new()
                 .push(info_col)
-                .push(scrollable(adapters_col))
-                .push(Space::with_height(Length::Fixed(10.0)))
-                .push(text("Found Steam Login Files:").size(18))
-                .push(scrollable(steam_files_col))
+                .push(adapters_col)
         };
 
-        let final_layout = Column::new()
-            .spacing(20)
-            .padding(20)
-            .align_items(iced::Alignment::Center)
-            .push(text("System Inspector").size(24).style(style::TITLE_COLOR))
-            .push(container(content).padding(15).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle))))
-            .push(button("Back").on_press(Message::CloseInspector));
+        let system_info_box = container(system_info_section)
+            .padding(15)
+            .width(Length::Fill)
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
 
-        container(final_layout)
+        // Profile Manager
+        let profile_header = text("Hardware-ID Profile Manager").size(20).style(style::TITLE_COLOR);
+
+        let profile_dropdown: Element<'_, Message> = pick_list(
+            self.profile_state.profile_names.clone(),
+            self.profile_state.selected_profile.clone(),
+            Message::ProfileSelected,
+        )
+        .placeholder("Select a profile...")
+        .width(Length::Fill)
+        .into();
+
+        let dropdown_row = Row::new()
+            .push(text("Load Profile: ").size(16))
+            .push(profile_dropdown)
+            .spacing(10)
+            .align_items(iced::Alignment::Center);
+
+        let apply_button = button(
+            text("Apply Profile").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(10)
+            .width(Length::FillPortion(1))
+            .on_press(Message::ApplySelectedProfile)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        let delete_button = button(
+            text("Delete").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(10)
+            .width(Length::FillPortion(1))
+            .on_press(Message::DeleteSelectedProfile)
+            .style(iced::theme::Button::Custom(Box::new(style::DangerButtonStyle)));
+
+        let profile_actions_row = Row::new()
+            .push(apply_button)
+            .push(Space::with_width(Length::Fixed(10.0)))
+            .push(delete_button)
+            .spacing(5);
+
+        let new_profile_input = text_input(
+            "Enter profile name (e.g., 'Main Account', 'Smurf')...",
+            &self.profile_state.new_profile_name,
+        )
+        .on_input(Message::NewProfileNameChanged)
+        .padding(10)
+        .width(Length::Fill);
+
+        let save_button = button(
+            text("Save Current as Profile").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(10)
+            .width(Length::Fill)
+            .on_press(Message::SaveCurrentAsProfile)
+            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle)));
+
+        let status_text: Element<'_, Message> = if let Some(msg) = &self.profile_state.status_message {
+            text(msg).size(14).into()
+        } else {
+            Space::with_height(Length::Fixed(14.0)).into()
+        };
+
+        let profile_details: Element<'_, Message> = if let Some(name) = &self.profile_state.selected_profile {
+            if let Some(profile) = self.profile_manager.get_profile(name) {
+                let mac_count = profile.mac_addresses.len();
+                let vol_count = profile.volume_ids.len();
+                Column::new()
+                    .push(text(format!("Profile: {}", profile.name)).size(14))
+                    .push(text(format!("  Created: {}", profile.created_at)).size(12))
+                    .push(text(format!("  {} MAC address(es), {} Volume ID(s)", mac_count, vol_count)).size(12))
+                    .spacing(3)
+                    .into()
+            } else {
+                Space::with_height(Length::Fixed(1.0)).into()
+            }
+        } else {
+            text("Select a profile to see details, or save the current hardware IDs as a new profile.")
+                .size(13)
+                .into()
+        };
+
+        let profile_section = column![
+            profile_header,
+            Space::with_height(Length::Fixed(15.0)),
+            dropdown_row,
+            Space::with_height(Length::Fixed(10.0)),
+            profile_details,
+            Space::with_height(Length::Fixed(10.0)),
+            profile_actions_row,
+            Space::with_height(Length::Fixed(20.0)),
+            text("Create New Profile from Current Hardware:").size(16),
+            Space::with_height(Length::Fixed(5.0)),
+            new_profile_input,
+            Space::with_height(Length::Fixed(10.0)),
+            save_button,
+            Space::with_height(Length::Fixed(10.0)),
+            status_text,
+        ]
+        .spacing(2);
+
+        let profile_box = container(profile_section)
+            .padding(15)
+            .width(Length::Fill)
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
+
+        let back_button = button(
+            text("<- Back to Main").size(16).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(12)
+            .width(Length::Fixed(200.0))
+            .on_press(Message::CloseInspector)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        let content = Column::new()
+            .push(text("System Inspector & Profile Manager").size(28).style(style::TITLE_COLOR))
+            .push(Space::with_height(Length::Fixed(20.0)))
+            .push(system_info_box)
+            .push(Space::with_height(Length::Fixed(20.0)))
+            .push(profile_box)
+            .push(Space::with_height(Length::Fixed(20.0)))
+            .push(back_button)
+            .spacing(5)
+            .padding(30)
+            .align_items(iced::Alignment::Center)
+            .width(Length::Fill);
+
+        container(scrollable(content))
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_x()
-            .center_y()
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
             .into()
     }
