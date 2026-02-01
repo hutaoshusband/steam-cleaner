@@ -17,6 +17,8 @@ pub mod backup;
 
 pub mod hardware_profile;
 pub mod executor;
+pub mod steam;
+pub mod redist;
 
 #[cfg(not(windows))]
 pub mod file_cleaner {

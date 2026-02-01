@@ -9,6 +9,10 @@ use crate::core::executor::{apply_hardware_profile, run_all_selected, CleaningOp
 use crate::core::hardware_profile::{HardwareProfile, ProfileManager};
 use crate::core::inspector::{gather_system_info, SystemInfo};
 use crate::ui::style;
+use crate::ui::redist_view;
+use crate::core::redist;
+#[cfg(windows)]
+use crate::core::steam;
 
 pub struct CleanerApp {
     state: State,
@@ -18,6 +22,8 @@ pub struct CleanerApp {
     inspector_state: InspectorState,
     profile_manager: ProfileManager,
     profile_state: ProfileState,
+    redist_open: bool,
+    redist_state: redist_view::RedistViewState,
 }
 
 #[derive(Default)]
@@ -63,6 +69,9 @@ pub enum Message {
     ProfileApplied(Vec<String>),
     DeleteSelectedProfile,
     RefreshProfiles,
+    // Redist Messages
+    OpenRedist,
+    Redist(redist_view::RedistMessage),
 }
 
 impl Application for CleanerApp {
@@ -74,7 +83,7 @@ impl Application for CleanerApp {
     fn new(_flags: ()) -> (Self, Command<Message>) {
         let profile_manager = ProfileManager::load().unwrap_or_default();
         let profile_names = profile_manager.profile_names();
-        
+
         (
             Self {
                 state: State::Idle,
@@ -90,6 +99,8 @@ impl Application for CleanerApp {
                     is_applying: false,
                     status_message: None,
                 },
+                redist_open: false,
+                redist_state: redist_view::RedistViewState::default(),
             },
             Command::none(),
         )
@@ -189,7 +200,7 @@ impl Application for CleanerApp {
                     self.profile_state.status_message = Some("[!] Please enter a profile name.".to_string());
                     return Command::none();
                 }
-                
+
                 Command::perform(
                     async move {
                         match HardwareProfile::snapshot_current(name.clone()) {
@@ -228,7 +239,7 @@ impl Application for CleanerApp {
                         self.profile_state.is_applying = true;
                         let profile_clone = profile.clone();
                         let dry_run = self.options.dry_run;
-                        
+
                         return Command::perform(
                             apply_hardware_profile(profile_clone, dry_run),
                             Message::ProfileApplied,
@@ -276,12 +287,73 @@ impl Application for CleanerApp {
                 self.profile_state.status_message = Some("[*] Profiles refreshed.".to_string());
                 Command::none()
             }
+            Message::OpenRedist => {
+                self.redist_open = true;
+                Command::none()
+            }
+            Message::Redist(redist_msg) => {
+                match redist_msg {
+                    redist_view::RedistMessage::ToggleCommon(v) => { self.redist_state.category_common = v; Command::none() }
+                    redist_view::RedistMessage::ToggleDirectX(v) => { self.redist_state.category_directx = v; Command::none() }
+                    redist_view::RedistMessage::ToggleDotNet(v) => { self.redist_state.category_dotnet = v; Command::none() }
+                    redist_view::RedistMessage::ToggleVCRedist(v) => { self.redist_state.category_vcredist = v; Command::none() }
+                    redist_view::RedistMessage::ToggleInstallers(v) => { self.redist_state.category_installers = v; Command::none() }
+                    redist_view::RedistMessage::StartScan => {
+                        self.redist_state.is_scanning = true;
+                        self.redist_state.scan_results = None;
+                        let categories = self.redist_state.get_active_categories();
+                        Command::perform(async move {
+                            #[cfg(windows)]
+                            {
+                                if let Some(root) = steam::get_steam_root() {
+                                    let libs = steam::get_library_folders(&root);
+                                    redist::scan_redistributables(&libs, &categories)
+                                } else {
+                                    Vec::new()
+                                }
+                            }
+                            #[cfg(not(windows))]
+                            {
+                                let _ = categories;
+                                Vec::new()
+                            }
+                        }, |items| Message::Redist(redist_view::RedistMessage::ScanFinished(items)))
+                    }
+                    redist_view::RedistMessage::ScanFinished(items) => {
+                        self.redist_state.is_scanning = false;
+                        self.redist_state.scan_results = Some(items);
+                        Command::none()
+                    }
+                    redist_view::RedistMessage::CleanFoundItems => {
+                        if let Some(items) = &self.redist_state.scan_results {
+                            let items_clone = items.clone();
+                            let dry_run = self.options.dry_run;
+                            Command::perform(async move {
+                                redist::clean_redistributables(&items_clone, dry_run)
+                            }, |logs| Message::Redist(redist_view::RedistMessage::CleanFinished(logs)))
+                        } else {
+                            Command::none()
+                        }
+                    }
+                    redist_view::RedistMessage::CleanFinished(logs) => {
+                        self.redist_state.last_clean_log = Some(logs);
+                        self.redist_state.scan_results = Some(Vec::new());
+                        Command::none()
+                    }
+                    redist_view::RedistMessage::Close => {
+                        self.redist_open = false;
+                        Command::none()
+                    }
+                }
+            }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         if self.inspector_open {
             self.view_inspector_window()
+        } else if self.redist_open {
+            redist_view::view(&self.redist_state).map(Message::Redist)
         } else {
             self.view_main_window()
         }
@@ -343,6 +415,12 @@ impl CleanerApp {
             .on_press(Message::OpenInspector)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
+        let redist_button = button(text("Steam Redist Cleaner (Beta)").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
+            .width(Length::Fill)
+            .on_press(Message::OpenRedist)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
         let (button_text_str, on_press_message) = match self.state {
             State::Idle => ("Execute Cleaning", Some(Message::Execute)),
             State::Cleaning => ("Cleaning in Progress...", None),
@@ -352,7 +430,7 @@ impl CleanerApp {
             .padding(15)
             .width(Length::Fill)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
-        
+
         if let Some(msg) = on_press_message {
             execute_button = execute_button.on_press(msg);
         }
@@ -375,6 +453,8 @@ impl CleanerApp {
             .push(backup_button)
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(inspector_button)
+            .push(Space::with_height(Length::Fixed(10.0)))
+            .push(redist_button)
             .spacing(10)
             .width(Length::FillPortion(1))
             .padding(20);
@@ -382,7 +462,7 @@ impl CleanerApp {
         let log_output = self.log_messages.iter().fold(Column::new().spacing(5), |col, msg| {
             col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(14))
         });
-        
+
         let console_box = container(scrollable(log_output))
             .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle)))
             .padding(15)
@@ -425,7 +505,7 @@ impl CleanerApp {
                 text("MAC Addresses:").size(16),
             ]
             .spacing(8);
-            
+
             let adapters_col = info.network_adapters.iter().fold(Column::new().spacing(3), |col, (_desc, mac)| {
                 col.push(text(format!("  - {}", mac)).size(14))
             });
