@@ -1,5 +1,3 @@
-// src/ui/app.rs
-
 use iced::widget::{button, column, container, pick_list, scrollable, text, text_input, toggler, Column, Row, Space};
 use iced::{Application, Command, Element, Length, Theme};
 use tinyfiledialogs as tfd;
@@ -9,6 +7,10 @@ use crate::core::executor::{apply_hardware_profile, run_all_selected, CleaningOp
 use crate::core::hardware_profile::{HardwareProfile, ProfileManager};
 use crate::core::inspector::{gather_system_info, SystemInfo};
 use crate::ui::style;
+use crate::ui::redist_view;
+use crate::core::redist;
+#[cfg(windows)]
+use crate::core::steam;
 
 pub struct CleanerApp {
     state: State,
@@ -18,6 +20,8 @@ pub struct CleanerApp {
     inspector_state: InspectorState,
     profile_manager: ProfileManager,
     profile_state: ProfileState,
+    redist_open: bool,
+    redist_state: redist_view::RedistViewState,
 }
 
 #[derive(Default)]
@@ -63,6 +67,8 @@ pub enum Message {
     ProfileApplied(Vec<String>),
     DeleteSelectedProfile,
     RefreshProfiles,
+    OpenRedist,
+    Redist(redist_view::RedistMessage),
 }
 
 impl Application for CleanerApp {
@@ -74,7 +80,7 @@ impl Application for CleanerApp {
     fn new(_flags: ()) -> (Self, Command<Message>) {
         let profile_manager = ProfileManager::load().unwrap_or_default();
         let profile_names = profile_manager.profile_names();
-        
+
         (
             Self {
                 state: State::Idle,
@@ -90,6 +96,8 @@ impl Application for CleanerApp {
                     is_applying: false,
                     status_message: None,
                 },
+                redist_open: false,
+                redist_state: redist_view::RedistViewState::default(),
             },
             Command::none(),
         )
@@ -189,7 +197,7 @@ impl Application for CleanerApp {
                     self.profile_state.status_message = Some("[!] Please enter a profile name.".to_string());
                     return Command::none();
                 }
-                
+
                 Command::perform(
                     async move {
                         match HardwareProfile::snapshot_current(name.clone()) {
@@ -228,7 +236,7 @@ impl Application for CleanerApp {
                         self.profile_state.is_applying = true;
                         let profile_clone = profile.clone();
                         let dry_run = self.options.dry_run;
-                        
+
                         return Command::perform(
                             apply_hardware_profile(profile_clone, dry_run),
                             Message::ProfileApplied,
@@ -251,7 +259,7 @@ impl Application for CleanerApp {
                 if let Some(name) = &self.profile_state.selected_profile.clone() {
                     let confirmation = tfd::message_box_yes_no(
                         "Delete Profile",
-                        &format!("Are you sure you want to delete the profile '{}'?", name),
+                        &format!("Are you sure you want to delete profile '{}'?", name),
                         tfd::MessageBoxIcon::Question,
                         tfd::YesNo::No,
                     );
@@ -276,19 +284,80 @@ impl Application for CleanerApp {
                 self.profile_state.status_message = Some("[*] Profiles refreshed.".to_string());
                 Command::none()
             }
+            Message::OpenRedist => {
+                self.redist_open = true;
+                Command::none()
+            }
+            Message::Redist(redist_msg) => {
+                match redist_msg {
+                    redist_view::RedistMessage::ToggleCommon(v) => { self.redist_state.category_common = v; Command::none() }
+                    redist_view::RedistMessage::ToggleDirectX(v) => { self.redist_state.category_directx = v; Command::none() }
+                    redist_view::RedistMessage::ToggleDotNet(v) => { self.redist_state.category_dotnet = v; Command::none() }
+                    redist_view::RedistMessage::ToggleVCRedist(v) => { self.redist_state.category_vcredist = v; Command::none() }
+                    redist_view::RedistMessage::ToggleInstallers(v) => { self.redist_state.category_installers = v; Command::none() }
+                    redist_view::RedistMessage::StartScan => {
+                        self.redist_state.is_scanning = true;
+                        self.redist_state.scan_results = None;
+                        let categories = self.redist_state.get_active_categories();
+                        Command::perform(async move {
+                            #[cfg(windows)]
+                            {
+                                if let Some(root) = steam::get_steam_root() {
+                                    let libs = steam::get_library_folders(&root);
+                                    redist::scan_redistributables(&libs, &categories)
+                                } else {
+                                    Vec::new()
+                                }
+                            }
+                            #[cfg(not(windows))]
+                            {
+                                let _ = categories;
+                                Vec::new()
+                            }
+                        }, |items| Message::Redist(redist_view::RedistMessage::ScanFinished(items)))
+                    }
+                    redist_view::RedistMessage::ScanFinished(items) => {
+                        self.redist_state.is_scanning = false;
+                        self.redist_state.scan_results = Some(items);
+                        Command::none()
+                    }
+                    redist_view::RedistMessage::CleanFoundItems => {
+                        if let Some(items) = &self.redist_state.scan_results {
+                            let items_clone = items.clone();
+                            let dry_run = self.options.dry_run;
+                            Command::perform(async move {
+                                redist::clean_redistributables(&items_clone, dry_run)
+                            }, |logs| Message::Redist(redist_view::RedistMessage::CleanFinished(logs)))
+                        } else {
+                            Command::none()
+                        }
+                    }
+                    redist_view::RedistMessage::CleanFinished(logs) => {
+                        self.redist_state.last_clean_log = Some(logs);
+                        self.redist_state.scan_results = Some(Vec::new());
+                        Command::none()
+                    }
+                    redist_view::RedistMessage::Close => {
+                        self.redist_open = false;
+                        Command::none()
+                    }
+                }
+            }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         if self.inspector_open {
             self.view_inspector_window()
+        } else if self.redist_open {
+            redist_view::view(&self.redist_state).map(Message::Redist)
         } else {
             self.view_main_window()
         }
     }
 
     fn theme(&self) -> Theme {
-        Theme::Light
+        Theme::Dark
     }
 }
 
@@ -298,49 +367,55 @@ impl CleanerApp {
             toggler(Some(label.to_string()), value, msg)
                 .style(iced::theme::Toggler::Custom(Box::new(style::CustomTogglerStyle)))
                 .width(Length::Fill)
-                .text_size(16)
+                .text_size(15)
                 .into()
         }
 
         let system_spoofing_options = column![
-            text("System-Spoofing").size(18).style(style::TITLE_COLOR),
+            text("System-Spoofing").size(16).style(style::TITLE_COLOR),
             make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds),
             make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac),
             make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId),
         ]
-        .spacing(12)
-        .padding(15);
+        .spacing(10)
+        .padding(12);
 
         let steam_cleaning_options = column![
-            text("Steam-Reinigung").size(18).style(style::TITLE_COLOR),
+            text("Steam-Reinigung").size(16).style(style::TITLE_COLOR),
             make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam),
         ]
-        .spacing(12)
-        .padding(15);
+        .spacing(10)
+        .padding(12);
 
         let aggressive_cleaning_options = column![
-            text("Aggressive Reinigung").size(18).style(style::TITLE_COLOR),
+            text("Aggressive Reinigung").size(16).style(style::TITLE_COLOR),
             make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive),
         ]
-        .spacing(12)
-        .padding(15);
+        .spacing(10)
+        .padding(12);
 
         let options_content = column![
             system_spoofing_options,
             steam_cleaning_options,
             aggressive_cleaning_options
         ]
-        .spacing(10);
+        .spacing(8);
 
         let options_box = container(options_content)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
             .padding(10)
             .width(Length::Fill);
 
-        let inspector_button = button(text("Inspector & Profiles").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(15)
+        let inspector_button = button(text("Inspector & Profiles").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(12)
             .width(Length::Fill)
             .on_press(Message::OpenInspector)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        let redist_button = button(text("Steam Redist Cleaner (Beta)").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(12)
+            .width(Length::Fill)
+            .on_press(Message::OpenRedist)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
         let (button_text_str, on_press_message) = match self.state {
@@ -348,41 +423,49 @@ impl CleanerApp {
             State::Cleaning => ("Cleaning in Progress...", None),
         };
 
-        let mut execute_button = button(text(button_text_str).size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(15)
+        let mut execute_button = button(text(button_text_str).size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(12)
             .width(Length::Fill)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
-        
+            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle)));
+
         if let Some(msg) = on_press_message {
             execute_button = execute_button.on_press(msg);
         }
 
-        let backup_button = button(text("Backup Steam Data").size(18).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(15)
+        let backup_button = button(text("Backup Steam Data").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(12)
             .width(Length::Fill)
             .on_press(Message::Backup)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
         let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun);
 
-        let left_panel = Column::new()
-            .push(options_box)
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle))))
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(execute_button)
-            .push(Space::with_height(Length::Fixed(10.0)))
-            .push(backup_button)
-            .push(Space::with_height(Length::Fixed(10.0)))
-            .push(inspector_button)
-            .spacing(10)
-            .width(Length::FillPortion(1))
-            .padding(20);
+        let left_panel_content = column![
+            options_box,
+            Space::with_height(Length::Fixed(15.0)),
+            container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle))),
+            Space::with_height(Length::Fixed(15.0)),
+            execute_button,
+            Space::with_height(Length::Fixed(8.0)),
+            backup_button,
+            Space::with_height(Length::Fixed(8.0)),
+            inspector_button,
+            Space::with_height(Length::Fixed(8.0)),
+            redist_button,
+            Space::with_height(Length::Fixed(20.0)),
+        ]
+        .spacing(8)
+        .width(Length::Fill);
 
-        let log_output = self.log_messages.iter().fold(Column::new().spacing(5), |col, msg| {
-            col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(14))
+        let left_panel = container(scrollable(left_panel_content))
+            .width(Length::FillPortion(1))
+            .height(Length::Fill)
+            .padding(15);
+
+        let log_output = self.log_messages.iter().fold(Column::new().spacing(4), |col, msg| {
+            col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(13))
         });
-        
+
         let console_box = container(scrollable(log_output))
             .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle)))
             .padding(15)
@@ -390,11 +473,12 @@ impl CleanerApp {
             .height(Length::Fill);
 
         let right_panel = Column::new()
-            .push(text("Verbose Log Output").size(18).style(style::TITLE_COLOR))
+            .push(text("Verbose Log Output").size(16).style(style::TITLE_COLOR))
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(console_box)
             .width(Length::FillPortion(2))
-            .padding(20);
+            .height(Length::Fill)
+            .padding(15);
 
         let main_content = Row::new()
             .push(left_panel)
@@ -409,13 +493,19 @@ impl CleanerApp {
     }
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
-        // System Info
+        let header = container(
+            text("System Inspector & Profile Manager").size(24).style(style::TITLE_COLOR)
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .align_y(iced::alignment::Vertical::Center);
+
         let system_info_section = if self.inspector_state.is_loading {
             Column::new().push(text("Loading system information..."))
         } else {
             let info = &self.inspector_state.info;
             let info_col = column![
-                text("Current System Hardware IDs").size(20).style(style::TITLE_COLOR),
+                text("Current System Hardware IDs").size(18).style(style::TITLE_COLOR),
                 Space::with_height(Length::Fixed(10.0)),
                 text(format!("Machine GUID: {}", info.machine_guid)),
                 text(format!("Product ID: {}", info.product_id)),
@@ -425,7 +515,7 @@ impl CleanerApp {
                 text("MAC Addresses:").size(16),
             ]
             .spacing(8);
-            
+
             let adapters_col = info.network_adapters.iter().fold(Column::new().spacing(3), |col, (_desc, mac)| {
                 col.push(text(format!("  - {}", mac)).size(14))
             });
@@ -440,8 +530,7 @@ impl CleanerApp {
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
 
-        // Profile Manager
-        let profile_header = text("Hardware-ID Profile Manager").size(20).style(style::TITLE_COLOR);
+        let profile_header = text("Hardware-ID Profile Manager").size(18).style(style::TITLE_COLOR);
 
         let profile_dropdown: Element<'_, Message> = pick_list(
             self.profile_state.profile_names.clone(),
@@ -453,15 +542,15 @@ impl CleanerApp {
         .into();
 
         let dropdown_row = Row::new()
-            .push(text("Load Profile: ").size(16))
+            .push(text("Load Profile: ").size(14))
             .push(profile_dropdown)
             .spacing(10)
             .align_items(iced::Alignment::Center);
 
         let apply_button = button(
-            text("Apply Profile").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text("Apply").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
         )
-            .padding(10)
+            .padding(8)
             .width(Length::FillPortion(1))
             .on_press(Message::ApplySelectedProfile)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
@@ -469,7 +558,7 @@ impl CleanerApp {
         let delete_button = button(
             text("Delete").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
         )
-            .padding(10)
+            .padding(8)
             .width(Length::FillPortion(1))
             .on_press(Message::DeleteSelectedProfile)
             .style(iced::theme::Button::Custom(Box::new(style::DangerButtonStyle)));
@@ -481,7 +570,7 @@ impl CleanerApp {
             .spacing(5);
 
         let new_profile_input = text_input(
-            "Enter profile name (e.g., 'Main Account', 'Smurf')...",
+            "Enter profile name...",
             &self.profile_state.new_profile_name,
         )
         .on_input(Message::NewProfileNameChanged)
@@ -497,9 +586,9 @@ impl CleanerApp {
             .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle)));
 
         let status_text: Element<'_, Message> = if let Some(msg) = &self.profile_state.status_message {
-            text(msg).size(14).into()
+            text(msg).size(13).into()
         } else {
-            Space::with_height(Length::Fixed(14.0)).into()
+            Space::with_height(Length::Fixed(13.0)).into()
         };
 
         let profile_details: Element<'_, Message> = if let Some(name) = &self.profile_state.selected_profile {
@@ -516,7 +605,7 @@ impl CleanerApp {
                 Space::with_height(Length::Fixed(1.0)).into()
             }
         } else {
-            text("Select a profile to see details, or save the current hardware IDs as a new profile.")
+            text("Select a profile to see details, or save current hardware IDs as a new profile.")
                 .size(13)
                 .into()
         };
@@ -530,7 +619,7 @@ impl CleanerApp {
             Space::with_height(Length::Fixed(10.0)),
             profile_actions_row,
             Space::with_height(Length::Fixed(20.0)),
-            text("Create New Profile from Current Hardware:").size(16),
+            text("Create New Profile from Current Hardware:").size(14),
             Space::with_height(Length::Fixed(5.0)),
             new_profile_input,
             Space::with_height(Length::Fixed(10.0)),
@@ -545,28 +634,39 @@ impl CleanerApp {
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
 
+        let scrollable_content = column![
+            system_info_box,
+            Space::with_height(Length::Fixed(20.0)),
+            profile_box,
+        ]
+        .spacing(10)
+        .width(Length::Fill);
+
         let back_button = button(
-            text("<- Back to Main").size(16).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
         )
-            .padding(12)
-            .width(Length::Fixed(200.0))
+            .padding(10)
+            .width(Length::Fixed(180.0))
             .on_press(Message::CloseInspector)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
-        let content = Column::new()
-            .push(text("System Inspector & Profile Manager").size(28).style(style::TITLE_COLOR))
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(system_info_box)
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(profile_box)
-            .push(Space::with_height(Length::Fixed(20.0)))
-            .push(back_button)
-            .spacing(5)
-            .padding(30)
-            .align_items(iced::Alignment::Center)
-            .width(Length::Fill);
+        let footer = container(back_button)
+            .padding(20)
+            .width(Length::Fill)
+            .center_x()
+            .align_y(iced::alignment::Vertical::Center);
 
-        container(scrollable(content))
+        let main_layout = column![
+            header,
+            container(scrollable(scrollable_content))
+                .width(Length::Fill)
+                .height(Length::Fill),
+            footer,
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        container(main_layout)
             .width(Length::Fill)
             .height(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))

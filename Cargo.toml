@@ -19,6 +19,7 @@ zip = "0.6"
 walkdir = "2"
 tinyfiledialogs = "3.9"
 widestring = "1.0"
+regex = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10"
