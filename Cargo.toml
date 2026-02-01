@@ -28,6 +28,7 @@ windows-sys = { version = "0.52", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_SystemInformation",
     "Win32_Security",
+    "Win32_UI_Shell",
 ] }
 rfd = "0.14"
 
