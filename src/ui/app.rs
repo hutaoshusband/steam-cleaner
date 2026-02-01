@@ -104,7 +104,7 @@ impl Application for CleanerApp {
     }
 
     fn title(&self) -> String {
-        "Modern Cleaner".to_string()
+        "Steam Cleaner 0.1.8".to_string()
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {

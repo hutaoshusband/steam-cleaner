@@ -84,26 +84,41 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
                     "Common Redistributables (_CommonRedist)",
                     state.category_common,
                 )
-                .on_toggle(RedistMessage::ToggleCommon),
+                .on_toggle(RedistMessage::ToggleCommon)
+                .style(iced::theme::Checkbox::Custom(Box::new(
+                    style::CustomCheckboxStyle,
+                ))),
             )
             .push(
                 checkbox("DirectX Installers", state.category_directx)
-                    .on_toggle(RedistMessage::ToggleDirectX),
+                    .on_toggle(RedistMessage::ToggleDirectX)
+                    .style(iced::theme::Checkbox::Custom(Box::new(
+                        style::CustomCheckboxStyle,
+                    ))),
             )
             .push(
                 checkbox(".NET Framework", state.category_dotnet)
-                    .on_toggle(RedistMessage::ToggleDotNet),
+                    .on_toggle(RedistMessage::ToggleDotNet)
+                    .style(iced::theme::Checkbox::Custom(Box::new(
+                        style::CustomCheckboxStyle,
+                    ))),
             )
             .push(
                 checkbox("Visual C++ Redistributables", state.category_vcredist)
-                    .on_toggle(RedistMessage::ToggleVCRedist),
+                    .on_toggle(RedistMessage::ToggleVCRedist)
+                    .style(iced::theme::Checkbox::Custom(Box::new(
+                        style::CustomCheckboxStyle,
+                    ))),
             )
             .push(
                 checkbox(
                     "Other Installers/Support (Aggressive)",
                     state.category_installers,
                 )
-                .on_toggle(RedistMessage::ToggleInstallers),
+                .on_toggle(RedistMessage::ToggleInstallers)
+                .style(iced::theme::Checkbox::Custom(Box::new(
+                    style::CustomCheckboxStyle,
+                ))),
             )
             .spacing(8)
             .padding(10),
