@@ -22,6 +22,8 @@ pub struct CleanerApp {
     profile_state: ProfileState,
     redist_open: bool,
     redist_state: redist_view::RedistViewState,
+    theme_open: bool,
+    current_theme: Theme,
 }
 
 #[derive(Default)]
@@ -69,6 +71,9 @@ pub enum Message {
     RefreshProfiles,
     OpenRedist,
     Redist(redist_view::RedistMessage),
+    OpenThemes,
+    CloseThemes,
+    ThemeSelected(Theme),
 }
 
 impl Application for CleanerApp {
@@ -98,6 +103,8 @@ impl Application for CleanerApp {
                 },
                 redist_open: false,
                 redist_state: redist_view::RedistViewState::default(),
+                theme_open: false,
+                current_theme: Theme::Dark, // Default to Red Retro (Dark)
             },
             Command::none(),
         )
@@ -343,6 +350,18 @@ impl Application for CleanerApp {
                     }
                 }
             }
+            Message::OpenThemes => {
+                self.theme_open = true;
+                Command::none()
+            }
+            Message::CloseThemes => {
+                self.theme_open = false;
+                Command::none()
+            }
+            Message::ThemeSelected(theme) => {
+                self.current_theme = theme;
+                Command::none()
+            }
         }
     }
 
@@ -351,13 +370,15 @@ impl Application for CleanerApp {
             self.view_inspector_window()
         } else if self.redist_open {
             redist_view::view(&self.redist_state).map(Message::Redist)
+        } else if self.theme_open {
+            self.view_theme_selection()
         } else {
             self.view_main_window()
         }
     }
 
     fn theme(&self) -> Theme {
-        Theme::Dark
+        self.current_theme.clone()
     }
 }
 
@@ -372,7 +393,7 @@ impl CleanerApp {
         }
 
         let system_spoofing_options = column![
-            text("System-Spoofing").size(16).style(style::TITLE_COLOR),
+            text("System-Spoofing").size(16).style(style::title_color(&self.current_theme)),
             make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds),
             make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac),
             make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId),
@@ -381,14 +402,14 @@ impl CleanerApp {
         .padding(12);
 
         let steam_cleaning_options = column![
-            text("Steam-Reinigung").size(16).style(style::TITLE_COLOR),
+            text("Steam-Reinigung").size(16).style(style::title_color(&self.current_theme)),
             make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam),
         ]
         .spacing(10)
         .padding(12);
 
         let aggressive_cleaning_options = column![
-            text("Aggressive Reinigung").size(16).style(style::TITLE_COLOR),
+            text("Aggressive Reinigung").size(16).style(style::title_color(&self.current_theme)),
             make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive),
         ]
         .spacing(10)
@@ -416,6 +437,12 @@ impl CleanerApp {
             .padding(12)
             .width(Length::Fill)
             .on_press(Message::OpenRedist)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        let themes_button = button(text("Themes & Appearance").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(12)
+            .width(Length::Fill)
+            .on_press(Message::OpenThemes)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
 
         let (button_text_str, on_press_message) = match self.state {
@@ -452,6 +479,8 @@ impl CleanerApp {
             inspector_button,
             Space::with_height(Length::Fixed(8.0)),
             redist_button,
+            Space::with_height(Length::Fixed(8.0)),
+            themes_button,
             Space::with_height(Length::Fixed(20.0)),
         ]
         .spacing(8)
@@ -473,7 +502,7 @@ impl CleanerApp {
             .height(Length::Fill);
 
         let right_panel = Column::new()
-            .push(text("Verbose Log Output").size(16).style(style::TITLE_COLOR))
+            .push(text("Verbose Log Output").size(16).style(style::title_color(&self.current_theme)))
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(console_box)
             .width(Length::FillPortion(2))
@@ -495,7 +524,7 @@ impl CleanerApp {
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
         let header = container(
-            text("System Inspector & Profile Manager").size(24).style(style::TITLE_COLOR)
+            text("System Inspector & Profile Manager").size(24).style(style::title_color(&self.current_theme))
         )
         .padding(20)
         .width(Length::Fill)
@@ -506,7 +535,7 @@ impl CleanerApp {
         } else {
             let info = &self.inspector_state.info;
             let info_col = column![
-                text("Current System Hardware IDs").size(18).style(style::TITLE_COLOR),
+                text("Current System Hardware IDs").size(18).style(style::title_color(&self.current_theme)),
                 Space::with_height(Length::Fixed(10.0)),
                 text(format!("Machine GUID: {}", info.machine_guid)),
                 text(format!("Product ID: {}", info.product_id)),
@@ -531,7 +560,7 @@ impl CleanerApp {
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
 
-        let profile_header = text("Hardware-ID Profile Manager").size(18).style(style::TITLE_COLOR);
+        let profile_header = text("Hardware-ID Profile Manager").size(18).style(style::title_color(&self.current_theme));
 
         let profile_dropdown: Element<'_, Message> = pick_list(
             self.profile_state.profile_names.clone(),
@@ -668,6 +697,81 @@ impl CleanerApp {
         .height(Length::Fill);
 
         container(main_layout)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .into()
+    }
+
+    fn view_theme_selection(&self) -> Element<'_, Message> {
+        let header = container(
+            text("Appearance Settings").size(24).style(style::title_color(&self.current_theme))
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .align_y(iced::alignment::Vertical::Center);
+
+        fn theme_btn<'a>(label: &'static str, theme: Theme, current: &Theme) -> Element<'a, Message> {
+            let is_selected = theme == *current;
+
+            let btn_style = if is_selected {
+                style::ThemedButtonStyle::Success // Use green for active
+            } else {
+                style::ThemedButtonStyle::Primary
+            };
+
+            button(text(label).size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+                .padding(15)
+                .width(Length::Fill)
+                .on_press(Message::ThemeSelected(theme))
+                .style(iced::theme::Button::Custom(Box::new(btn_style)))
+                .into()
+        }
+
+        let theme_buttons = column![
+            text("Select Application Theme:").size(18).style(style::title_color(&self.current_theme)),
+            Space::with_height(Length::Fixed(15.0)),
+            theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme),
+            theme_btn("White Mode (Light)", Theme::Light, &self.current_theme),
+            theme_btn("Pure Dark (Neutral)", Theme::Dracula, &self.current_theme),
+        ]
+        .spacing(15)
+        .width(Length::Fixed(400.0));
+
+        let content = container(theme_buttons)
+            .padding(30)
+            .width(Length::Fill)
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+            .center_x();
+
+        let back_button = button(
+            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(10)
+            .width(Length::Fixed(180.0))
+            .on_press(Message::CloseThemes)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+
+        let footer = container(back_button)
+            .padding(20)
+            .width(Length::Fill)
+            .center_x()
+            .align_y(iced::alignment::Vertical::Center);
+
+        let layout = column![
+            header,
+            container(scrollable(content))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x()
+                .center_y(),
+            footer
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        container(layout)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
