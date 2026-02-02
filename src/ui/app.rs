@@ -1,5 +1,5 @@
-use iced::widget::{button, column, container, pick_list, scrollable, text, text_input, toggler, Column, Row, Space};
-use iced::{Application, Command, Element, Length, Theme};
+use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input, toggler, Column, Row, Space};
+use iced::{border, Application, Color, Command, Element, Length, Theme};
 use tinyfiledialogs as tfd;
 
 use crate::core::backup;
@@ -24,6 +24,8 @@ pub struct CleanerApp {
     redist_state: redist_view::RedistViewState,
     theme_open: bool,
     current_theme: Theme,
+    custom_colors_open: bool,
+    custom_colors: CustomThemeColors,
 }
 
 #[derive(Default)]
@@ -39,6 +41,29 @@ struct ProfileState {
     new_profile_name: String,
     is_applying: bool,
     status_message: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+struct CustomThemeColors {
+    background: Color,
+    surface: Color,
+    text: Color,
+    primary: Color,
+    danger: Color,
+    success: Color,
+}
+
+impl Default for CustomThemeColors {
+    fn default() -> Self {
+        Self {
+            background: Color::from_rgb(0.1, 0.11, 0.15),
+            surface: Color::from_rgb(0.14, 0.16, 0.23),
+            text: Color::from_rgb(0.75, 0.79, 0.96),
+            primary: Color::from_rgb(0.48, 0.64, 0.97),
+            danger: Color::from_rgb(0.97, 0.46, 0.56),
+            success: Color::from_rgb(0.62, 0.93, 0.42),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -74,6 +99,15 @@ pub enum Message {
     OpenThemes,
     CloseThemes,
     ThemeSelected(Theme),
+    OpenCustomColors,
+    CloseCustomColors,
+    PickBackgroundColor,
+    PickSurfaceColor,
+    PickTextColor,
+    PickPrimaryColor,
+    PickDangerColor,
+    PickSuccessColor,
+    ApplyCustomTheme,
 }
 
 impl Application for CleanerApp {
@@ -104,7 +138,9 @@ impl Application for CleanerApp {
                 redist_open: false,
                 redist_state: redist_view::RedistViewState::default(),
                 theme_open: false,
-                current_theme: Theme::Dark, // Default to Red Retro (Dark)
+                current_theme: Theme::Dark,
+                custom_colors_open: false,
+                custom_colors: CustomThemeColors::default(),
             },
             Command::none(),
         )
@@ -362,6 +398,54 @@ impl Application for CleanerApp {
                 self.current_theme = theme;
                 Command::none()
             }
+            Message::OpenCustomColors => {
+                self.custom_colors_open = true;
+                Command::none()
+            }
+            Message::CloseCustomColors => {
+                self.custom_colors_open = false;
+                Command::none()
+            }
+            Message::PickBackgroundColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Background Color", tfd::DefaultColorValue::Hex("#1a1b26")) {
+                    self.custom_colors.background = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::PickSurfaceColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Surface Color", tfd::DefaultColorValue::Hex("#24283b")) {
+                    self.custom_colors.surface = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::PickTextColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Text Color", tfd::DefaultColorValue::Hex("#c0caf5")) {
+                    self.custom_colors.text = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::PickPrimaryColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Primary Color", tfd::DefaultColorValue::Hex("#7aa2f7")) {
+                    self.custom_colors.primary = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::PickDangerColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Danger Color", tfd::DefaultColorValue::Hex("#f7768e")) {
+                    self.custom_colors.danger = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::PickSuccessColor => {
+                if let Some(rgb) = tfd::color_chooser_dialog("Pick Success Color", tfd::DefaultColorValue::Hex("#9ece6a")) {
+                    self.custom_colors.success = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
+                }
+                Command::none()
+            }
+            Message::ApplyCustomTheme => {
+                self.custom_colors_open = false;
+                Command::none()
+            }
         }
     }
 
@@ -370,6 +454,8 @@ impl Application for CleanerApp {
             self.view_inspector_window()
         } else if self.redist_open {
             redist_view::view(&self.redist_state).map(Message::Redist)
+        } else if self.custom_colors_open {
+            self.view_custom_colors()
         } else if self.theme_open {
             self.view_theme_selection()
         } else {
@@ -625,12 +711,13 @@ impl CleanerApp {
             if let Some(profile) = self.profile_manager.get_profile(name) {
                 let mac_count = profile.mac_addresses.len();
                 let vol_count = profile.volume_ids.len();
-                Column::new()
-                    .push(text(format!("Profile: {}", profile.name)).size(14))
-                    .push(text(format!("  Created: {}", profile.created_at)).size(12))
-                    .push(text(format!("  {} MAC address(es), {} Volume ID(s)", mac_count, vol_count)).size(12))
-                    .spacing(3)
-                    .into()
+                column![
+                    text(format!("Profile: {}", profile.name)).size(14),
+                    text(format!("  Created: {}", profile.created_at)).size(12),
+                    text(format!("  {} MAC address(es), {} Volume ID(s)", mac_count, vol_count)).size(12),
+                ]
+                .spacing(3)
+                .into()
             } else {
                 Space::with_height(Length::Fixed(1.0)).into()
             }
@@ -716,7 +803,7 @@ impl CleanerApp {
             let is_selected = theme == *current;
 
             let btn_style = if is_selected {
-                style::ThemedButtonStyle::Success // Use green for active
+                style::ThemedButtonStyle::Success
             } else {
                 style::ThemedButtonStyle::Primary
             };
@@ -735,6 +822,14 @@ impl CleanerApp {
             theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme),
             theme_btn("White Mode (Light)", Theme::Light, &self.current_theme),
             theme_btn("Pure Dark (Neutral)", Theme::Dracula, &self.current_theme),
+            theme_btn("Ultra Dark", Theme::Nord, &self.current_theme),
+            theme_btn("Cream", Theme::SolarizedLight, &self.current_theme),
+            Space::with_height(Length::Fixed(20.0)),
+            button(text("Custom Colors...").size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+                .padding(15)
+                .width(Length::Fill)
+                .on_press(Message::OpenCustomColors)
+                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary))),
         ]
         .spacing(15)
         .width(Length::Fixed(400.0));
@@ -766,6 +861,148 @@ impl CleanerApp {
                 .height(Length::Fill)
                 .center_x()
                 .center_y(),
+            footer
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        container(layout)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .into()
+    }
+
+    fn view_custom_colors(&self) -> Element<'_, Message> {
+        let header = container(
+            text("Theme Customizer").size(24).style(style::title_color(&self.current_theme))
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .align_y(iced::alignment::Vertical::Center);
+
+        let color_btn = |label: &str, color: Color, msg: Message| -> Element<Message> {
+            column![
+                text(label).size(14).style(style::title_color(&self.current_theme)),
+                button(
+                    container(Space::with_width(Length::Fill))
+                        .width(Length::Fill)
+                        .height(Length::Fixed(40.0))
+                        .style(iced::theme::Container::Custom(Box::new(style::ColorPreviewStyle { color })))
+                )
+                .padding(0)
+                .width(Length::Fill)
+                .on_press(msg)
+                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary)))
+            ]
+            .spacing(5)
+            .into()
+        };
+
+        let core_colors = container(
+            column![
+                text("Core Layout").size(18),
+                color_btn("Background", self.custom_colors.background, Message::PickBackgroundColor),
+                color_btn("Surface / Panels", self.custom_colors.surface, Message::PickSurfaceColor),
+                color_btn("Text Color", self.custom_colors.text, Message::PickTextColor),
+            ]
+            .spacing(15)
+            .width(Length::Fill)
+        )
+        .padding(20)
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+        .width(Length::FillPortion(1));
+
+        let accent_colors = container(
+            column![
+                text("Accents & Status").size(18),
+                color_btn("Primary Accent", self.custom_colors.primary, Message::PickPrimaryColor),
+                color_btn("Danger / Error", self.custom_colors.danger, Message::PickDangerColor),
+                color_btn("Success / Go", self.custom_colors.success, Message::PickSuccessColor),
+            ]
+            .spacing(15)
+            .width(Length::Fill)
+        )
+        .padding(20)
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+        .width(Length::FillPortion(1));
+
+        let color_columns = row![core_colors, accent_colors].spacing(20);
+
+        // --- LIVE PREVIEW BOX ---
+        let preview_header = container(text("Live Preview").size(16).style(style::title_color(&self.current_theme)))
+            .padding(10)
+            .style(iced::theme::Container::Custom(Box::new(style::PreviewBoxStyle {
+                bg: self.custom_colors.surface,
+                text: self.custom_colors.text
+            })))
+            .width(Length::Fill);
+
+        let preview_content = column![
+            text("Sample Window Content").size(18).style(self.custom_colors.text),
+            text("This shows how your color choices look together.").size(14).style(self.custom_colors.text),
+            row![
+                button(text("Primary Action").horizontal_alignment(iced::alignment::Horizontal::Center))
+                    .width(Length::Fill)
+                    .padding(10)
+                    .style(iced::theme::Button::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.primary }))),
+                button(text("Danger Zone").horizontal_alignment(iced::alignment::Horizontal::Center))
+                    .width(Length::Fill)
+                    .padding(10)
+                    .style(iced::theme::Button::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.danger }))),
+            ].spacing(10),
+            container(text("Success Message Received").style(Color::WHITE))
+                .padding(10)
+                .width(Length::Fill)
+                .style(iced::theme::Container::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.success })))
+        ]
+        .spacing(15)
+        .padding(20);
+
+        let preview_container = container(
+            column![
+                preview_header,
+                preview_content
+            ]
+        )
+        .style(iced::theme::Container::Custom(Box::new(style::PreviewBoxStyle {
+            bg: self.custom_colors.background,
+            text: self.custom_colors.text
+        })))
+        .width(Length::Fill)
+        .padding(10);
+
+        let main_col = column![
+            color_columns, 
+            Space::with_height(Length::Fixed(20.0)),
+            text("Preview").size(18),
+            preview_container,
+            Space::with_height(Length::Fixed(20.0)),
+            button(text("Apply Changes").size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+                    .padding(15)
+                    .width(Length::Fill)
+                    .on_press(Message::ApplyCustomTheme)
+                    .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Success)))
+        ]
+        .spacing(10)
+        .width(Length::Fill);
+
+        let back_button = button(text("<- Back to Themes").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(10)
+            .width(Length::Fixed(180.0))
+            .on_press(Message::CloseCustomColors)
+            .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary)));
+
+        let footer = container(back_button)
+            .padding(20)
+            .width(Length::Fill)
+            .center_x()
+            .align_y(iced::alignment::Vertical::Center);
+
+        let layout = column![
+            header,
+            container(scrollable(main_col)).width(Length::Fill).height(Length::Fill).padding(30),
             footer
         ]
         .width(Length::Fill)

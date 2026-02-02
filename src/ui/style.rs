@@ -23,6 +23,8 @@ pub fn title_color(theme: &iced::Theme) -> Color {
     match theme {
         iced::Theme::Light => Color::from_rgb(0.1, 0.1, 0.2), // Dark text for titles
         iced::Theme::Dracula => Color::from_rgb(0.9, 0.9, 0.95), // White text for titles
+        iced::Theme::Nord => NORD_PRIMARY,                    // Muted blue for Ultra Dark
+        iced::Theme::SolarizedLight => CREAM_PRIMARY,         // Warm amber for Cream
         _ => TITLE_COLOR,
     }
 }
@@ -47,6 +49,26 @@ pub const DARK_PRIMARY: Color = Color::from_rgb(0.4, 0.6, 0.9); // Soft Blue
 pub const DARK_DANGER: Color = Color::from_rgb(0.95, 0.3, 0.3);
 pub const DARK_SUCCESS: Color = Color::from_rgb(0.3, 0.8, 0.4);
 
+// --- ULTRA DARK (NORD) ---
+pub const NORD_BG: Color = Color::from_rgb(0.015, 0.018, 0.025); // Ultra dark - almost black (darker than default Dark)
+pub const NORD_SURFACE: Color = Color::from_rgb(0.025, 0.028, 0.035); // Slightly lighter surface
+pub const NORD_TEXT: Color = Color::from_rgb(0.95, 0.95, 0.97); // Nearly white text
+pub const NORD_SUBTEXT: Color = Color::from_rgb(0.65, 0.68, 0.72);
+pub const NORD_BORDER: Color = Color::from_rgb(0.08, 0.1, 0.15); // Very subtle dark border
+pub const NORD_PRIMARY: Color = Color::from_rgb(0.4, 0.5, 0.65); // Muted blue accent
+pub const NORD_DANGER: Color = Color::from_rgb(0.75, 0.3, 0.35); // Dark red
+pub const NORD_SUCCESS: Color = Color::from_rgb(0.35, 0.6, 0.4); // Muted green
+
+// --- CREAM (SOLARIZED LIGHT) ---
+pub const CREAM_BG: Color = Color::from_rgb(0.96, 0.93, 0.88); // Warm cream background
+pub const CREAM_SURFACE: Color = Color::from_rgb(0.99, 0.96, 0.91); // Lighter cream surface
+pub const CREAM_TEXT: Color = Color::from_rgb(0.35, 0.3, 0.25); // Warm dark brown text
+pub const CREAM_SUBTEXT: Color = Color::from_rgb(0.55, 0.5, 0.45);
+pub const CREAM_BORDER: Color = Color::from_rgb(0.85, 0.8, 0.72); // Warm beige border
+pub const CREAM_PRIMARY: Color = Color::from_rgb(0.75, 0.55, 0.35); // Warm amber/bronze
+pub const CREAM_DANGER: Color = Color::from_rgb(0.85, 0.35, 0.3); // Warm red
+pub const CREAM_SUCCESS: Color = Color::from_rgb(0.55, 0.7, 0.4); // Olive green
+
 pub struct MainWindowStyle;
 impl container::StyleSheet for MainWindowStyle {
     type Style = iced::Theme;
@@ -60,6 +82,16 @@ impl container::StyleSheet for MainWindowStyle {
             iced::Theme::Dracula => container::Appearance {
                 background: Some(DARK_BG.into()),
                 text_color: Some(DARK_TEXT),
+                ..Default::default()
+            },
+            iced::Theme::Nord => container::Appearance {
+                background: Some(NORD_BG.into()),
+                text_color: Some(NORD_TEXT),
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => container::Appearance {
+                background: Some(CREAM_BG.into()),
+                text_color: Some(CREAM_TEXT),
                 ..Default::default()
             },
             // Default to Red Retro (Dark)
@@ -105,6 +137,34 @@ impl container::StyleSheet for OptionsBoxStyle {
                 },
                 ..Default::default()
             },
+            iced::Theme::Nord => container::Appearance {
+                background: Some(NORD_SURFACE.into()),
+                border: border::Border {
+                    color: NORD_BORDER,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.25),
+                    offset: Vector::new(0.0, 3.0),
+                    blur_radius: 10.0,
+                },
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => container::Appearance {
+                background: Some(CREAM_SURFACE.into()),
+                border: border::Border {
+                    color: CREAM_BORDER,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.1),
+                    offset: Vector::new(0.0, 2.0),
+                    blur_radius: 8.0,
+                },
+                ..Default::default()
+            },
             _ => container::Appearance {
                 background: Some(Color::from_rgba(0.08, 0.02, 0.04, 0.9).into()),
                 border: border::Border {
@@ -146,6 +206,24 @@ impl button::StyleSheet for PrimaryButtonStyle {
                 text_color: Color::WHITE,
                 ..Default::default()
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(NORD_PRIMARY.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(CREAM_PRIMARY.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
             _ => button::Appearance {
                 background: Some(CRT_RED.into()),
                 border: border::Border {
@@ -175,6 +253,14 @@ impl button::StyleSheet for PrimaryButtonStyle {
                 background: Some(Color::from_rgb(0.5, 0.7, 1.0).into()),
                 ..active
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(Color::from_rgb(0.65, 0.75, 0.85).into()),
+                ..active
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.85, 0.65, 0.45).into()),
+                ..active
+            },
             _ => button::Appearance {
                 background: Some(DANGER_RED.into()),
                 border: border::Border {
@@ -202,6 +288,14 @@ impl button::StyleSheet for PrimaryButtonStyle {
             },
             iced::Theme::Dracula => button::Appearance {
                 background: Some(Color::from_rgb(0.3, 0.5, 0.8).into()),
+                ..active
+            },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(Color::from_rgb(0.45, 0.55, 0.65).into()),
+                ..active
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.65, 0.45, 0.25).into()),
                 ..active
             },
             _ => button::Appearance {
@@ -241,6 +335,24 @@ impl button::StyleSheet for SuccessButtonStyle {
                 text_color: Color::WHITE,
                 ..Default::default()
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(NORD_SUCCESS.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(CREAM_SUCCESS.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
             _ => button::Appearance {
                 background: Some(ACCENT_GREEN.into()),
                 border: border::Border {
@@ -270,6 +382,14 @@ impl button::StyleSheet for SuccessButtonStyle {
                 background: Some(Color::from_rgb(0.35, 0.85, 0.45).into()),
                 ..active
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(Color::from_rgb(0.7, 0.8, 0.68).into()),
+                ..active
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.75, 0.85, 0.6).into()),
+                ..active
+            },
             _ => button::Appearance {
                 background: Some(Color::from_rgb(0.2, 0.75, 0.28).into()),
                 border: border::Border {
@@ -291,7 +411,10 @@ impl button::StyleSheet for SuccessButtonStyle {
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
         match style {
-            iced::Theme::Light | iced::Theme::Dracula => button::Appearance {
+            iced::Theme::Light
+            | iced::Theme::Dracula
+            | iced::Theme::Nord
+            | iced::Theme::SolarizedLight => button::Appearance {
                 background: Some(Color::from_rgb(0.15, 0.6, 0.2).into()),
                 ..active
             },
@@ -332,6 +455,24 @@ impl button::StyleSheet for DangerButtonStyle {
                 text_color: Color::WHITE,
                 ..Default::default()
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(NORD_DANGER.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(CREAM_DANGER.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
             _ => button::Appearance {
                 background: Some(VHS_PINK.into()),
                 border: border::Border {
@@ -361,6 +502,14 @@ impl button::StyleSheet for DangerButtonStyle {
                 background: Some(Color::from_rgb(1.0, 0.4, 0.4).into()),
                 ..active
             },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(Color::from_rgb(0.85, 0.5, 0.55).into()),
+                ..active
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.95, 0.55, 0.5).into()),
+                ..active
+            },
             _ => button::Appearance {
                 background: Some(Color::from_rgb(0.85, 0.05, 0.45).into()),
                 border: border::Border {
@@ -382,7 +531,10 @@ impl button::StyleSheet for DangerButtonStyle {
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
         match style {
-            iced::Theme::Light | iced::Theme::Dracula => button::Appearance {
+            iced::Theme::Light
+            | iced::Theme::Dracula
+            | iced::Theme::Nord
+            | iced::Theme::SolarizedLight => button::Appearance {
                 background: Some(Color::from_rgb(0.8, 0.1, 0.1).into()),
                 ..active
             },
@@ -429,6 +581,30 @@ impl toggler::StyleSheet for CustomTogglerStyle {
                 foreground_border_width: 0.0,
                 foreground_border_color: Color::TRANSPARENT,
             },
+            iced::Theme::Nord => toggler::Appearance {
+                background: if is_active {
+                    NORD_PRIMARY
+                } else {
+                    Color::from_rgb(0.2, 0.22, 0.28)
+                },
+                background_border_width: 1.0,
+                background_border_color: NORD_BORDER,
+                foreground: Color::WHITE,
+                foreground_border_width: 0.0,
+                foreground_border_color: Color::TRANSPARENT,
+            },
+            iced::Theme::SolarizedLight => toggler::Appearance {
+                background: if is_active {
+                    CREAM_PRIMARY
+                } else {
+                    Color::from_rgb(0.9, 0.87, 0.82)
+                },
+                background_border_width: 1.0,
+                background_border_color: CREAM_BORDER,
+                foreground: Color::WHITE,
+                foreground_border_width: 0.0,
+                foreground_border_color: Color::TRANSPARENT,
+            },
             _ => toggler::Appearance {
                 background: if is_active {
                     CRT_RED
@@ -463,6 +639,22 @@ impl toggler::StyleSheet for CustomTogglerStyle {
                     Color::from_rgb(0.5, 0.7, 1.0)
                 } else {
                     Color::from_rgb(0.25, 0.25, 0.3)
+                },
+                ..self.active(style, is_active)
+            },
+            iced::Theme::Nord => toggler::Appearance {
+                background: if is_active {
+                    Color::from_rgb(0.63, 0.75, 0.85)
+                } else {
+                    Color::from_rgb(0.25, 0.28, 0.35)
+                },
+                ..self.active(style, is_active)
+            },
+            iced::Theme::SolarizedLight => toggler::Appearance {
+                background: if is_active {
+                    Color::from_rgb(0.83, 0.63, 0.43)
+                } else {
+                    Color::from_rgb(0.88, 0.83, 0.78)
                 },
                 ..self.active(style, is_active)
             },
@@ -509,6 +701,26 @@ impl container::StyleSheet for ConsoleContainerStyle {
                     radius: 4.0.into(),
                 },
                 text_color: Some(Color::from_rgb(0.8, 0.8, 0.85)),
+                ..Default::default()
+            },
+            iced::Theme::Nord => container::Appearance {
+                background: Some(Color::from_rgb(0.12, 0.14, 0.18).into()),
+                border: border::Border {
+                    color: NORD_BORDER,
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(Color::from_rgb(0.8, 0.85, 0.75)),
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => container::Appearance {
+                background: Some(Color::from_rgb(0.94, 0.91, 0.86).into()),
+                border: border::Border {
+                    color: CREAM_BORDER,
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(Color::from_rgb(0.4, 0.5, 0.35)),
                 ..Default::default()
             },
             _ => container::Appearance {
@@ -561,6 +773,87 @@ impl button::StyleSheet for ThemedButtonStyle {
 }
 
 pub struct CustomCheckboxStyle;
+
+pub struct ColorPreviewStyle {
+    pub color: Color,
+}
+
+impl container::StyleSheet for ColorPreviewStyle {
+    type Style = iced::Theme;
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(self.color.into()),
+            border: border::Border {
+                color: Color::WHITE,
+                width: 2.0,
+                radius: 4.0.into(),
+            },
+            ..Default::default()
+        }
+    }
+}
+
+impl button::StyleSheet for ColorPreviewStyle {
+    type Style = iced::Theme;
+    fn active(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(self.color.into()),
+            border: border::Border {
+                color: Color::WHITE,
+                width: 2.0,
+                radius: 4.0.into(),
+            },
+            text_color: if self.color.r + self.color.g + self.color.b > 1.5 {
+                Color::BLACK
+            } else {
+                Color::WHITE
+            },
+            ..Default::default()
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        button::Appearance {
+            shadow: iced::Shadow {
+                color: Color::BLACK,
+                offset: Vector::new(0.0, 2.0),
+                blur_radius: 5.0,
+            },
+            ..active
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        button::Appearance {
+            shadow: iced::Shadow::default(),
+            ..active
+        }
+    }
+}
+
+pub struct PreviewBoxStyle {
+    pub bg: Color,
+    pub text: Color,
+}
+
+impl container::StyleSheet for PreviewBoxStyle {
+    type Style = iced::Theme;
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(self.bg.into()),
+            text_color: Some(self.text),
+            border: border::Border {
+                color: self.text,
+                width: 2.0,
+                radius: 8.0.into(),
+            },
+            ..Default::default()
+        }
+    }
+}
+
 impl checkbox::StyleSheet for CustomCheckboxStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
@@ -601,6 +894,42 @@ impl checkbox::StyleSheet for CustomCheckboxStyle {
                 },
                 text_color: Some(DARK_TEXT),
             },
+            iced::Theme::Nord => checkbox::Appearance {
+                background: if is_checked {
+                    Background::Color(NORD_PRIMARY)
+                } else {
+                    Background::Color(Color::from_rgb(0.22, 0.25, 0.32))
+                },
+                icon_color: Color::WHITE,
+                border: border::Border {
+                    color: if is_checked {
+                        NORD_PRIMARY
+                    } else {
+                        NORD_BORDER
+                    },
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(NORD_TEXT),
+            },
+            iced::Theme::SolarizedLight => checkbox::Appearance {
+                background: if is_checked {
+                    Background::Color(CREAM_PRIMARY)
+                } else {
+                    Background::Color(Color::from_rgb(0.95, 0.92, 0.87))
+                },
+                icon_color: Color::WHITE,
+                border: border::Border {
+                    color: if is_checked {
+                        CREAM_PRIMARY
+                    } else {
+                        CREAM_BORDER
+                    },
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(CREAM_TEXT),
+            },
             _ => checkbox::Appearance {
                 background: if is_checked {
                     Background::Color(CRT_RED)
@@ -637,6 +966,22 @@ impl checkbox::StyleSheet for CustomCheckboxStyle {
                     Background::Color(Color::from_rgb(0.5, 0.7, 1.0))
                 } else {
                     Background::Color(Color::from_rgb(0.25, 0.25, 0.3))
+                },
+                ..self.active(style, is_checked)
+            },
+            iced::Theme::Nord => checkbox::Appearance {
+                background: if is_checked {
+                    Background::Color(Color::from_rgb(0.65, 0.75, 0.85))
+                } else {
+                    Background::Color(Color::from_rgb(0.28, 0.31, 0.38))
+                },
+                ..self.active(style, is_checked)
+            },
+            iced::Theme::SolarizedLight => checkbox::Appearance {
+                background: if is_checked {
+                    Background::Color(Color::from_rgb(0.85, 0.65, 0.45))
+                } else {
+                    Background::Color(Color::from_rgb(0.9, 0.87, 0.82))
                 },
                 ..self.active(style, is_checked)
             },
