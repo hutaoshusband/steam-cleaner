@@ -1,6 +1,8 @@
 use std::process::Command;
-use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-use widestring::U16CString;
+
+use windows_sys::Win32::UI::Shell::ShellExecuteW;
+use windows_sys::Win32::Foundation::HWND;
+use std::env;
 
 
 pub fn is_elevated() -> bool {
@@ -16,13 +18,23 @@ pub fn is_elevated() -> bool {
 
 /// Zeigt eine native Windows-Fehlermeldung an.
 pub fn show_admin_error_dialog() {
-    let title = U16CString::from_str("Error: Admin missing").unwrap();
-    let message = U16CString::from_str(
-        "This Program needs to be ran as admin.\n\nBitte rechtsklicken Sie die .exe und wählen Sie 'Als Administrator ausführen'.",
-    )
-    .unwrap();
+     let exe = env::current_exe().unwrap();
+    let args: String = env::args().skip(1).collect::<Vec<_>>().join(" ");
+
+    let exe_w: Vec<u16> = exe.to_string_lossy().encode_utf16().chain(Some(0)).collect();
+    let args_w: Vec<u16> = args.encode_utf16().chain(Some(0)).collect();
+    let verb = "runas\0".encode_utf16().collect::<Vec<u16>>();
 
     unsafe {
-        MessageBoxW(0, message.as_ptr(), title.as_ptr(), MB_OK | MB_ICONERROR);
+        ShellExecuteW(
+            0 as HWND,
+            verb.as_ptr(),
+            exe_w.as_ptr(),
+            args_w.as_ptr(),
+            std::ptr::null(),
+            1,
+        );
     }
+
+    std::process::exit(0);
 }

@@ -13,10 +13,13 @@ iced = { version = "0.12", features = ["tokio", "advanced", "multi-window"] }
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1.0", features = ["v4"] }
 rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 zip = "0.6"
 walkdir = "2"
 tinyfiledialogs = "3.9"
 widestring = "1.0"
+regex = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10"
@@ -25,6 +28,7 @@ windows-sys = { version = "0.52", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_SystemInformation",
     "Win32_Security",
+    "Win32_UI_Shell",
 ] }
 rfd = "0.14"
 

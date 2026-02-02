@@ -94,3 +94,60 @@ pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
 
     Ok(logs)
 }
+
+/// Wendet spezifische MAC-Adressen aus einem Profil an
+/// adapter_macs: HashMap von Adapter-Key (z.B. "0001") zu MAC (z.B. "AABBCCDDEEFF")
+pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, String>, dry_run: bool) -> std::io::Result<Vec<String>> {
+    let mut logs = Vec::new();
+    
+    if adapter_macs.is_empty() {
+        logs.push("[-] No MAC addresses in profile to apply.".to_string());
+        return Ok(logs);
+    }
+
+    logs.push(format!("[*] Applying {} MAC addresses from profile...", adapter_macs.len()));
+
+    let mut applied_count = 0;
+
+    for (adapter_key, new_mac) in adapter_macs {
+        let adapter_full_path = format!(
+            r"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{{4d36e972-e325-11ce-bfc1-08002be10318}}\{}",
+            adapter_key
+        );
+
+        logs.push(format!("[*] Setting adapter {} → MAC: {}", adapter_key, new_mac));
+
+        if dry_run {
+            logs.push(format!("    [DRY-RUN] Would set MAC to {}", new_mac));
+            applied_count += 1;
+            continue;
+        }
+
+        let reg_result = Command::new("reg")
+            .args(["add", &adapter_full_path, "/v", "NetworkAddress", "/d", new_mac, "/f"])
+            .status();
+
+        match reg_result {
+            Ok(status) if status.success() => {
+                logs.push(format!("[+] Successfully set MAC for adapter {}", adapter_key));
+                applied_count += 1;
+            }
+            Ok(status) => {
+                logs.push(format!(
+                    "[-] Error setting MAC for adapter {}. Exit Code: {}",
+                    adapter_key,
+                    status.code().unwrap_or(-1)
+                ));
+            }
+            Err(e) => {
+                logs.push(format!("[-] Execution error for adapter {}: {}", adapter_key, e));
+            }
+        }
+    }
+
+    if applied_count > 0 {
+        logs.push(format!("[✓] Profile MAC application complete. {} adapters updated. Reboot needed!", applied_count));
+    }
+
+    Ok(logs)
+}

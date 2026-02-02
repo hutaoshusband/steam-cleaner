@@ -15,7 +15,10 @@ pub mod inspector;
 #[cfg(any(windows, test))]
 pub mod backup;
 
+pub mod hardware_profile;
 pub mod executor;
+pub mod steam;
+pub mod redist;
 
 #[cfg(not(windows))]
 pub mod file_cleaner {
@@ -27,6 +30,9 @@ pub mod file_cleaner {
 #[cfg(not(windows))]
 pub mod mac_spoofer {
     pub fn spoof_mac_all(_dry_run: bool) -> std::io::Result<Vec<String>> {
+        Ok(vec!["MAC spoofing is only supported on Windows.".to_string()])
+    }
+    pub fn spoof_mac_from_profile(_adapter_macs: &std::collections::HashMap<String, String>, _dry_run: bool) -> std::io::Result<Vec<String>> {
         Ok(vec!["MAC spoofing is only supported on Windows.".to_string()])
     }
 }
@@ -51,6 +57,9 @@ pub mod sid_spoofer {
 #[cfg(not(windows))]
 pub mod volumeid_wrapper {
     pub fn change_volume_id(_drive_letter: &str, _dry_run: bool) -> std::io::Result<String> {
+        Ok("Volume ID changing is only supported on Windows.".to_string())
+    }
+    pub fn change_volume_id_to_specific(_drive_letter: &str, _volume_id: &str, _dry_run: bool) -> std::io::Result<String> {
         Ok("Volume ID changing is only supported on Windows.".to_string())
     }
 }
