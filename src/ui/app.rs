@@ -25,7 +25,8 @@ pub struct CleanerApp {
     theme_open: bool,
     current_theme: Theme,
     custom_colors_open: bool,
-    custom_colors: CustomThemeColors,
+    custom_colors: style::CustomThemeColors,
+    custom_theme_active: bool,
 }
 
 #[derive(Default)]
@@ -43,28 +44,7 @@ struct ProfileState {
     status_message: Option<String>,
 }
 
-#[derive(Clone, Debug)]
-struct CustomThemeColors {
-    background: Color,
-    surface: Color,
-    text: Color,
-    primary: Color,
-    danger: Color,
-    success: Color,
-}
-
-impl Default for CustomThemeColors {
-    fn default() -> Self {
-        Self {
-            background: Color::from_rgb(0.1, 0.11, 0.15),
-            surface: Color::from_rgb(0.14, 0.16, 0.23),
-            text: Color::from_rgb(0.75, 0.79, 0.96),
-            primary: Color::from_rgb(0.48, 0.64, 0.97),
-            danger: Color::from_rgb(0.97, 0.46, 0.56),
-            success: Color::from_rgb(0.62, 0.93, 0.42),
-        }
-    }
-}
+// CustomThemeColors moved to style.rs
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
@@ -140,7 +120,8 @@ impl Application for CleanerApp {
                 theme_open: false,
                 current_theme: Theme::Dark,
                 custom_colors_open: false,
-                custom_colors: CustomThemeColors::default(),
+                custom_colors: style::CustomThemeColors::load(),
+                custom_theme_active: false,
             },
             Command::none(),
         )
@@ -396,6 +377,7 @@ impl Application for CleanerApp {
             }
             Message::ThemeSelected(theme) => {
                 self.current_theme = theme;
+                self.custom_theme_active = false;
                 Command::none()
             }
             Message::OpenCustomColors => {
@@ -444,6 +426,8 @@ impl Application for CleanerApp {
             }
             Message::ApplyCustomTheme => {
                 self.custom_colors_open = false;
+                self.custom_theme_active = true;
+                let _ = self.custom_colors.save();
                 Command::none()
             }
         }
@@ -453,7 +437,12 @@ impl Application for CleanerApp {
         if self.inspector_open {
             self.view_inspector_window()
         } else if self.redist_open {
-            redist_view::view(&self.redist_state).map(Message::Redist)
+             let active_colors = if self.custom_theme_active {
+                Some(self.custom_colors)
+            } else {
+                None
+            };
+            redist_view::view(&self.redist_state, active_colors).map(Message::Redist)
         } else if self.custom_colors_open {
             self.view_custom_colors()
         } else if self.theme_open {
@@ -470,9 +459,11 @@ impl Application for CleanerApp {
 
 impl CleanerApp {
     fn view_main_window(&self) -> Element<'_, Message> {
-        fn make_toggler<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message) -> Element<'a, Message> {
+        let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+
+        fn make_toggler<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
             toggler(Some(label.to_string()), value, msg)
-                .style(iced::theme::Toggler::Custom(Box::new(style::CustomTogglerStyle)))
+                .style(iced::theme::Toggler::Custom(Box::new(style::CustomTogglerStyle { custom_colors: colors })))
                 .width(Length::Fill)
                 .text_size(15)
                 .into()
@@ -480,23 +471,23 @@ impl CleanerApp {
 
         let system_spoofing_options = column![
             text("System-Spoofing").size(16).style(style::title_color(&self.current_theme)),
-            make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds),
-            make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac),
-            make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId),
+            make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds, active_colors),
+            make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac, active_colors),
+            make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId, active_colors),
         ]
         .spacing(10)
         .padding(12);
 
         let steam_cleaning_options = column![
             text("Steam-Reinigung").size(16).style(style::title_color(&self.current_theme)),
-            make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam),
+            make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam, active_colors),
         ]
         .spacing(10)
         .padding(12);
 
         let aggressive_cleaning_options = column![
             text("Aggressive Reinigung").size(16).style(style::title_color(&self.current_theme)),
-            make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive),
+            make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive, active_colors),
         ]
         .spacing(10)
         .padding(12);
@@ -509,7 +500,7 @@ impl CleanerApp {
         .spacing(8);
 
         let options_box = container(options_content)
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })))
             .padding(10)
             .width(Length::Fill);
 
@@ -517,19 +508,19 @@ impl CleanerApp {
             .padding(12)
             .width(Length::Fill)
             .on_press(Message::OpenInspector)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let redist_button = button(text("Steam Redist Cleaner (Beta)").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(12)
             .width(Length::Fill)
             .on_press(Message::OpenRedist)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let themes_button = button(text("Themes & Appearance").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(12)
             .width(Length::Fill)
             .on_press(Message::OpenThemes)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let (button_text_str, on_press_message) = match self.state {
             State::Idle => ("Execute Cleaning", Some(Message::Execute)),
@@ -539,7 +530,7 @@ impl CleanerApp {
         let mut execute_button = button(text(button_text_str).size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
             .padding(12)
             .width(Length::Fill)
-            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
 
         if let Some(msg) = on_press_message {
             execute_button = execute_button.on_press(msg);
@@ -549,14 +540,14 @@ impl CleanerApp {
             .padding(12)
             .width(Length::Fill)
             .on_press(Message::Backup)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun);
+        let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun, active_colors);
 
         let left_panel_content = column![
             options_box,
             Space::with_height(Length::Fixed(15.0)),
-            container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle))),
+            container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
             Space::with_height(Length::Fixed(15.0)),
             execute_button,
             Space::with_height(Length::Fixed(8.0)),
@@ -582,7 +573,7 @@ impl CleanerApp {
         });
 
         let console_box = container(scrollable(log_output))
-            .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle { custom_colors: active_colors })))
             .padding(15)
             .width(Length::Fill)
             .height(Length::Fill);
@@ -604,11 +595,13 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
-            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
             .into()
     }
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
+        let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+        
         let header = container(
             text("System Inspector & Profile Manager").size(24).style(style::title_color(&self.current_theme))
         )
@@ -644,7 +637,7 @@ impl CleanerApp {
         let system_info_box = container(system_info_section)
             .padding(15)
             .width(Length::Fill)
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
         let profile_header = text("Hardware-ID Profile Manager").size(18).style(style::title_color(&self.current_theme));
 
@@ -669,7 +662,7 @@ impl CleanerApp {
             .padding(8)
             .width(Length::FillPortion(1))
             .on_press(Message::ApplySelectedProfile)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let delete_button = button(
             text("Delete").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
@@ -677,7 +670,7 @@ impl CleanerApp {
             .padding(8)
             .width(Length::FillPortion(1))
             .on_press(Message::DeleteSelectedProfile)
-            .style(iced::theme::Button::Custom(Box::new(style::DangerButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::DangerButtonStyle { custom_colors: active_colors })));
 
         let profile_actions_row = Row::new()
             .push(apply_button)
@@ -699,7 +692,7 @@ impl CleanerApp {
             .padding(10)
             .width(Length::Fill)
             .on_press(Message::SaveCurrentAsProfile)
-            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
 
         let status_text: Element<'_, Message> = if let Some(msg) = &self.profile_state.status_message {
             text(msg).size(13).into()
@@ -749,7 +742,7 @@ impl CleanerApp {
         let profile_box = container(profile_section)
             .padding(15)
             .width(Length::Fill)
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)));
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
         let scrollable_content = column![
             system_info_box,
@@ -765,7 +758,7 @@ impl CleanerApp {
             .padding(10)
             .width(Length::Fixed(180.0))
             .on_press(Message::CloseInspector)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let footer = container(back_button)
             .padding(20)
@@ -787,11 +780,13 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
-            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
             .into()
     }
 
     fn view_theme_selection(&self) -> Element<'_, Message> {
+        let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+
         let header = container(
             text("Appearance Settings").size(24).style(style::title_color(&self.current_theme))
         )
@@ -799,13 +794,13 @@ impl CleanerApp {
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
-        fn theme_btn<'a>(label: &'static str, theme: Theme, current: &Theme) -> Element<'a, Message> {
+        fn theme_btn<'a>(label: &'static str, theme: Theme, current: &Theme, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
             let is_selected = theme == *current;
 
             let btn_style = if is_selected {
-                style::ThemedButtonStyle::Success
+                style::ThemedButtonStyle::Success(colors)
             } else {
-                style::ThemedButtonStyle::Primary
+                style::ThemedButtonStyle::Primary(colors)
             };
 
             button(text(label).size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
@@ -819,17 +814,17 @@ impl CleanerApp {
         let theme_buttons = column![
             text("Select Application Theme:").size(18).style(style::title_color(&self.current_theme)),
             Space::with_height(Length::Fixed(15.0)),
-            theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme),
-            theme_btn("White Mode (Light)", Theme::Light, &self.current_theme),
-            theme_btn("Pure Dark (Neutral)", Theme::Dracula, &self.current_theme),
-            theme_btn("Ultra Dark", Theme::Nord, &self.current_theme),
-            theme_btn("Cream", Theme::SolarizedLight, &self.current_theme),
+            theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme, active_colors),
+            theme_btn("White Mode (Light)", Theme::Light, &self.current_theme, active_colors),
+            theme_btn("Pure Dark (Neutral)", Theme::Dracula, &self.current_theme, active_colors),
+            theme_btn("Ultra Dark", Theme::Nord, &self.current_theme, active_colors),
+            theme_btn("Cream", Theme::SolarizedLight, &self.current_theme, active_colors),
             Space::with_height(Length::Fixed(20.0)),
             button(text("Custom Colors...").size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
                 .padding(15)
                 .width(Length::Fill)
                 .on_press(Message::OpenCustomColors)
-                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary))),
+                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary(active_colors)))),
         ]
         .spacing(15)
         .width(Length::Fixed(400.0));
@@ -837,7 +832,7 @@ impl CleanerApp {
         let content = container(theme_buttons)
             .padding(30)
             .width(Length::Fill)
-            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })))
             .center_x();
 
         let back_button = button(
@@ -846,7 +841,7 @@ impl CleanerApp {
             .padding(10)
             .width(Length::Fixed(180.0))
             .on_press(Message::CloseThemes)
-            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle)));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let footer = container(back_button)
             .padding(20)
@@ -870,7 +865,7 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
-            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
             .into()
     }
 
@@ -894,7 +889,7 @@ impl CleanerApp {
                 .padding(0)
                 .width(Length::Fill)
                 .on_press(msg)
-                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary)))
+                .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary(None))))
             ]
             .spacing(5)
             .into()
@@ -911,7 +906,7 @@ impl CleanerApp {
             .width(Length::Fill)
         )
         .padding(20)
-        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle::default())))
         .width(Length::FillPortion(1));
 
         let accent_colors = container(
@@ -925,7 +920,7 @@ impl CleanerApp {
             .width(Length::Fill)
         )
         .padding(20)
-        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle)))
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle::default())))
         .width(Length::FillPortion(1));
 
         let color_columns = row![core_colors, accent_colors].spacing(20);
@@ -983,7 +978,7 @@ impl CleanerApp {
                     .padding(15)
                     .width(Length::Fill)
                     .on_press(Message::ApplyCustomTheme)
-                    .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Success)))
+                    .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Success(None))))
         ]
         .spacing(10)
         .width(Length::Fill);
@@ -992,7 +987,7 @@ impl CleanerApp {
             .padding(10)
             .width(Length::Fixed(180.0))
             .on_press(Message::CloseCustomColors)
-            .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary)));
+            .style(iced::theme::Button::Custom(Box::new(style::ThemedButtonStyle::Primary(None))));
 
         let footer = container(back_button)
             .padding(20)
@@ -1012,7 +1007,7 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
-            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle::default())))
             .into()
     }
 }

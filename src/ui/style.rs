@@ -1,5 +1,6 @@
 use iced::widget::{button, checkbox, container, toggler};
 use iced::{border, Background, Color, Vector};
+use serde::{Deserialize, Serialize};
 
 // --- RED RETRO VHS / CUTEGORE (DEFAULT / DARK VARIANT) ---
 pub const BACKGROUND: Color = Color::from_rgb(0.04, 0.01, 0.02); // Very dark red-black
@@ -18,6 +19,71 @@ pub const TITLE_COLOR: Color = CRT_RED;
 pub const ACCENT_GREEN: Color = Color::from_rgb(0.15, 0.6, 0.2); // Muted green
 pub const ACCENT_BLUE: Color = Color::from_rgb(0.15, 0.3, 0.65); // Muted blue
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub struct CustomThemeColors {
+    #[serde(with = "color_serde")]
+    pub background: Color,
+    #[serde(with = "color_serde")]
+    pub surface: Color,
+    #[serde(with = "color_serde")]
+    pub text: Color,
+    #[serde(with = "color_serde")]
+    pub primary: Color,
+    #[serde(with = "color_serde")]
+    pub danger: Color,
+    #[serde(with = "color_serde")]
+    pub success: Color,
+}
+
+mod color_serde {
+    use iced::Color;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        [color.r, color.g, color.b, color.a].serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Color, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let [r, g, b, a] = <[f32; 4]>::deserialize(deserializer)?;
+        Ok(Color { r, g, b, a })
+    }
+}
+
+impl Default for CustomThemeColors {
+    fn default() -> Self {
+        Self {
+            background: Color::from_rgb(0.1, 0.11, 0.15),
+            surface: Color::from_rgb(0.14, 0.16, 0.23),
+            text: Color::from_rgb(0.75, 0.79, 0.96),
+            primary: Color::from_rgb(0.48, 0.64, 0.97),
+            danger: Color::from_rgb(0.97, 0.46, 0.56),
+            success: Color::from_rgb(0.62, 0.93, 0.42),
+        }
+    }
+}
+
+impl CustomThemeColors {
+    pub fn save(&self) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(self)?;
+        std::fs::write("custom_theme.json", json)
+    }
+
+    pub fn load() -> Self {
+        if let Ok(content) = std::fs::read_to_string("custom_theme.json") {
+            if let Ok(colors) = serde_json::from_str(&content) {
+                return colors;
+            }
+        }
+        Self::default()
+    }
+}
+
 // Helper for title colors
 pub fn title_color(theme: &iced::Theme) -> Color {
     match theme {
@@ -29,6 +95,7 @@ pub fn title_color(theme: &iced::Theme) -> Color {
     }
 }
 
+// ... constants ...
 // --- LIGHT MODE (WHITE) ---
 pub const LIGHT_BG: Color = Color::from_rgb(0.98, 0.98, 0.99);
 pub const LIGHT_SURFACE: Color = Color::from_rgb(1.0, 1.0, 1.0);
@@ -69,10 +136,22 @@ pub const CREAM_PRIMARY: Color = Color::from_rgb(0.75, 0.55, 0.35); // Warm ambe
 pub const CREAM_DANGER: Color = Color::from_rgb(0.85, 0.35, 0.3); // Warm red
 pub const CREAM_SUCCESS: Color = Color::from_rgb(0.55, 0.7, 0.4); // Olive green
 
-pub struct MainWindowStyle;
+#[derive(Default)]
+pub struct MainWindowStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl container::StyleSheet for MainWindowStyle {
     type Style = iced::Theme;
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return container::Appearance {
+                background: Some(colors.background.into()),
+                text_color: Some(colors.text),
+                ..Default::default()
+            };
+        }
+
         match style {
             iced::Theme::Light => container::Appearance {
                 background: Some(LIGHT_BG.into()),
@@ -104,10 +183,36 @@ impl container::StyleSheet for MainWindowStyle {
     }
 }
 
-pub struct OptionsBoxStyle;
+pub struct OptionsBoxStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
+impl Default for OptionsBoxStyle {
+    fn default() -> Self {
+        Self { custom_colors: None }
+    }
+}
+
 impl container::StyleSheet for OptionsBoxStyle {
     type Style = iced::Theme;
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return container::Appearance {
+                background: Some(colors.surface.into()),
+                border: border::Border {
+                    color: colors.primary,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
+                    offset: Vector::new(0.0, 4.0),
+                    blur_radius: 10.0,
+                },
+                ..Default::default()
+            };
+        }
+
         match style {
             iced::Theme::Light => container::Appearance {
                 background: Some(LIGHT_SURFACE.into()),
@@ -183,10 +288,26 @@ impl container::StyleSheet for OptionsBoxStyle {
     }
 }
 
-pub struct PrimaryButtonStyle;
+#[derive(Default)]
+pub struct PrimaryButtonStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl button::StyleSheet for PrimaryButtonStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style) -> button::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return button::Appearance {
+                background: Some(colors.primary.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: colors.background, // Contrast?
+                ..Default::default()
+            };
+        }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(LIGHT_PRIMARY.into()),
@@ -244,6 +365,17 @@ impl button::StyleSheet for PrimaryButtonStyle {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if let Some(_) = &self.custom_colors {
+             return button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::BLACK,
+                    offset: Vector::new(0.0, 2.0),
+                    blur_radius: 4.0,
+                },
+                ..active
+            };
+        }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(Color::from_rgb(0.3, 0.6, 1.0).into()),
@@ -281,6 +413,8 @@ impl button::StyleSheet for PrimaryButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if self.custom_colors.is_some() { return active; }
+        
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(Color::from_rgb(0.1, 0.4, 0.8).into()),
@@ -312,10 +446,25 @@ impl button::StyleSheet for PrimaryButtonStyle {
     }
 }
 
-pub struct SuccessButtonStyle;
+#[derive(Default)]
+pub struct SuccessButtonStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl button::StyleSheet for SuccessButtonStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style) -> button::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return button::Appearance {
+                background: Some(colors.success.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: colors.background,
+                ..Default::default()
+            };
+        }
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(LIGHT_SUCCESS.into()),
@@ -373,6 +522,8 @@ impl button::StyleSheet for SuccessButtonStyle {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if self.custom_colors.is_some() { return active; }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(Color::from_rgb(0.25, 0.75, 0.35).into()),
@@ -410,6 +561,8 @@ impl button::StyleSheet for SuccessButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if self.custom_colors.is_some() { return active; }
+
         match style {
             iced::Theme::Light
             | iced::Theme::Dracula
@@ -432,10 +585,26 @@ impl button::StyleSheet for SuccessButtonStyle {
     }
 }
 
-pub struct DangerButtonStyle;
+#[derive(Default)]
+pub struct DangerButtonStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl button::StyleSheet for DangerButtonStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style) -> button::Appearance {
+        if let Some(colors) = &self.custom_colors {
+             return button::Appearance {
+                background: Some(colors.danger.into()),
+                border: border::Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                text_color: colors.background,
+                ..Default::default()
+            };
+        }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(LIGHT_DANGER.into()),
@@ -493,6 +662,8 @@ impl button::StyleSheet for DangerButtonStyle {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if self.custom_colors.is_some() { return active; }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(Color::from_rgb(0.95, 0.3, 0.3).into()),
@@ -530,6 +701,8 @@ impl button::StyleSheet for DangerButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
+        if self.custom_colors.is_some() { return active; }
+
         match style {
             iced::Theme::Light
             | iced::Theme::Dracula
@@ -552,10 +725,29 @@ impl button::StyleSheet for DangerButtonStyle {
     }
 }
 
-pub struct CustomTogglerStyle;
+#[derive(Default)]
+pub struct CustomTogglerStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl toggler::StyleSheet for CustomTogglerStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+        if let Some(colors) = &self.custom_colors {
+             return toggler::Appearance {
+                background: if is_active {
+                    colors.primary
+                } else {
+                    colors.surface
+                },
+                background_border_width: 1.0,
+                background_border_color: colors.primary,
+                foreground: colors.background, // Toggle circle color? Contrast
+                foreground_border_width: 0.0,
+                foreground_border_color: Color::TRANSPARENT,
+            };
+        }
+
         match style {
             iced::Theme::Light => toggler::Appearance {
                 background: if is_active {
@@ -625,6 +817,9 @@ impl toggler::StyleSheet for CustomTogglerStyle {
     }
 
     fn hovered(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+        if let Some(_) = &self.custom_colors {
+            return self.active(style, is_active);
+        }
         match style {
             iced::Theme::Light => toggler::Appearance {
                 background: if is_active {
@@ -678,10 +873,27 @@ impl toggler::StyleSheet for CustomTogglerStyle {
     }
 }
 
-pub struct ConsoleContainerStyle;
+#[derive(Default)]
+pub struct ConsoleContainerStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
 impl container::StyleSheet for ConsoleContainerStyle {
     type Style = iced::Theme;
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        if let Some(colors) = &self.custom_colors {
+             return container::Appearance {
+                background: Some(colors.background.into()),
+                border: border::Border {
+                    color: colors.primary,
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(colors.success), // Console text often green/accent
+                ..Default::default()
+            };
+        }
+
         match style {
             iced::Theme::Light => container::Appearance {
                 background: Some(Color::from_rgb(0.95, 0.95, 0.96).into()),
@@ -743,8 +955,9 @@ impl container::StyleSheet for ConsoleContainerStyle {
 }
 
 pub enum ThemedButtonStyle {
-    Primary,
-    Success,
+    Primary(Option<CustomThemeColors>),
+    Success(Option<CustomThemeColors>),
+    Danger(Option<CustomThemeColors>),
 }
 
 impl button::StyleSheet for ThemedButtonStyle {
@@ -752,27 +965,32 @@ impl button::StyleSheet for ThemedButtonStyle {
 
     fn active(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary => PrimaryButtonStyle.active(style),
-            ThemedButtonStyle::Success => SuccessButtonStyle.active(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.active(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.active(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.active(style),
         }
     }
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary => PrimaryButtonStyle.hovered(style),
-            ThemedButtonStyle::Success => SuccessButtonStyle.hovered(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.hovered(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.hovered(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.hovered(style),
         }
     }
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary => PrimaryButtonStyle.pressed(style),
-            ThemedButtonStyle::Success => SuccessButtonStyle.pressed(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.pressed(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.pressed(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.pressed(style),
         }
     }
 }
 
-pub struct CustomCheckboxStyle;
+pub struct CustomCheckboxStyle {
+     pub custom_colors: Option<CustomThemeColors>,
+}
 
 pub struct ColorPreviewStyle {
     pub color: Color,
@@ -857,6 +1075,27 @@ impl container::StyleSheet for PreviewBoxStyle {
 impl checkbox::StyleSheet for CustomCheckboxStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return checkbox::Appearance {
+                background: if is_checked {
+                    Background::Color(colors.primary)
+                } else {
+                    Background::Color(colors.surface)
+                },
+                icon_color: colors.background,
+                border: border::Border {
+                    color: if is_checked {
+                        colors.primary
+                    } else {
+                        colors.text
+                    },
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(colors.text),
+            };
+        }
+
         match style {
             iced::Theme::Light => checkbox::Appearance {
                 background: if is_checked {

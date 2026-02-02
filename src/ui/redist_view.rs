@@ -67,7 +67,7 @@ pub enum RedistMessage {
     Close,
 }
 
-pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
+pub fn view<'a>(state: &'a RedistViewState, custom_colors: Option<style::CustomThemeColors>) -> Element<'a, RedistMessage> {
     let header = container(
         text("Steam Redistributable Cleaner")
             .size(22)
@@ -86,28 +86,28 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
                 )
                 .on_toggle(RedistMessage::ToggleCommon)
                 .style(iced::theme::Checkbox::Custom(Box::new(
-                    style::CustomCheckboxStyle,
+                    style::CustomCheckboxStyle { custom_colors },
                 ))),
             )
             .push(
                 checkbox("DirectX Installers", state.category_directx)
                     .on_toggle(RedistMessage::ToggleDirectX)
                     .style(iced::theme::Checkbox::Custom(Box::new(
-                        style::CustomCheckboxStyle,
+                        style::CustomCheckboxStyle { custom_colors },
                     ))),
             )
             .push(
                 checkbox(".NET Framework", state.category_dotnet)
                     .on_toggle(RedistMessage::ToggleDotNet)
                     .style(iced::theme::Checkbox::Custom(Box::new(
-                        style::CustomCheckboxStyle,
+                        style::CustomCheckboxStyle { custom_colors },
                     ))),
             )
             .push(
                 checkbox("Visual C++ Redistributables", state.category_vcredist)
                     .on_toggle(RedistMessage::ToggleVCRedist)
                     .style(iced::theme::Checkbox::Custom(Box::new(
-                        style::CustomCheckboxStyle,
+                        style::CustomCheckboxStyle { custom_colors },
                     ))),
             )
             .push(
@@ -117,14 +117,14 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
                 )
                 .on_toggle(RedistMessage::ToggleInstallers)
                 .style(iced::theme::Checkbox::Custom(Box::new(
-                    style::CustomCheckboxStyle,
+                    style::CustomCheckboxStyle { custom_colors },
                 ))),
             )
             .spacing(8)
             .padding(10),
     )
     .style(iced::theme::Container::Custom(Box::new(
-        style::OptionsBoxStyle,
+        style::OptionsBoxStyle { custom_colors },
     )))
     .width(Length::Fill);
 
@@ -135,7 +135,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
     .padding(12)
     .width(Length::Fill)
     .style(iced::theme::Button::Custom(Box::new(
-        style::PrimaryButtonStyle,
+        style::PrimaryButtonStyle { custom_colors },
     )));
 
     let mut scrollable_content = Column::new()
@@ -168,7 +168,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
         .padding(12)
         .width(Length::Fill)
         .style(iced::theme::Button::Custom(Box::new(
-            style::DangerButtonStyle,
+            style::DangerButtonStyle { custom_colors },
         )));
 
         scrollable_content = scrollable_content
@@ -213,7 +213,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
 
         let log_container = container(scroll)
             .style(iced::theme::Container::Custom(Box::new(
-                style::ConsoleContainerStyle,
+                style::ConsoleContainerStyle { custom_colors },
             )))
             .padding(10)
             .width(Length::Fill);
@@ -227,7 +227,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
             .padding(10)
             .width(Length::Fixed(180.0))
             .style(iced::theme::Button::Custom(Box::new(
-                style::PrimaryButtonStyle,
+                style::PrimaryButtonStyle { custom_colors },
             )));
 
     let footer = container(back_btn)
@@ -252,7 +252,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
         .height(Length::Fill)
         .padding(20)
         .style(iced::theme::Container::Custom(Box::new(
-            style::MainWindowStyle,
+            style::MainWindowStyle { custom_colors },
         )))
         .into()
 }
