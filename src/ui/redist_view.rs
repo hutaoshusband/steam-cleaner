@@ -250,6 +250,7 @@ pub fn view<'a>(state: &'a RedistViewState) -> Element<'a, RedistMessage> {
     container(main_layout)
         .width(Length::Fill)
         .height(Length::Fill)
+        .padding(20)
         .style(iced::theme::Container::Custom(Box::new(
             style::MainWindowStyle,
         )))

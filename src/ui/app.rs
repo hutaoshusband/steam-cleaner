@@ -488,6 +488,7 @@ impl CleanerApp {
         container(main_content)
             .width(Length::Fill)
             .height(Length::Fill)
+            .padding(20)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
             .into()
     }
@@ -669,6 +670,7 @@ impl CleanerApp {
         container(main_layout)
             .width(Length::Fill)
             .height(Length::Fill)
+            .padding(20)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle)))
             .into()
     }
