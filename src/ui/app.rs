@@ -120,8 +120,8 @@ impl Application for CleanerApp {
                 theme_open: false,
                 current_theme: Theme::Dark,
                 custom_colors_open: false,
-                custom_colors: style::CustomThemeColors::load(),
-                custom_theme_active: false,
+                custom_colors: style::CustomThemeColors::load().unwrap_or_default(),
+                custom_theme_active: style::CustomThemeColors::load().is_some(),
             },
             Command::none(),
         )

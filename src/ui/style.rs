@@ -74,13 +74,15 @@ impl CustomThemeColors {
         std::fs::write("custom_theme.json", json)
     }
 
-    pub fn load() -> Self {
-        if let Ok(content) = std::fs::read_to_string("custom_theme.json") {
-            if let Ok(colors) = serde_json::from_str(&content) {
-                return colors;
-            }
-        }
-        Self::default()
+    /// Load custom colors from file. Returns None if file doesn't exist or is invalid.
+    pub fn load() -> Option<Self> {
+        let content = std::fs::read_to_string("custom_theme.json").ok()?;
+        serde_json::from_str(&content).ok()
+    }
+
+    /// Load custom colors from file, or return defaults if not found.
+    pub fn load_or_default() -> Self {
+        Self::load().unwrap_or_default()
     }
 }
 
