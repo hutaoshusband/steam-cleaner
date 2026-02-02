@@ -15,7 +15,7 @@ pub struct CleaningOptions {
 pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     let mut results = Vec::new();
     if options.dry_run {
-        results.push("--- SIMULATION MODE (DRY RUN) ---".to_string());
+        results.push("(sim) Simulation mode (dry run)".to_string());
     }
     println!("Starting asynchronous cleaning with options: {:?}", options);
 
@@ -28,11 +28,11 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
             let mut logs = Vec::new();
             match registry_cleaner::clean_registry(dry_run) {
                 Ok(messages) => logs.extend(messages),
-                Err(e) => logs.push(format!("❌ Error spoofing System IDs: {}", e)),
+                Err(e) => logs.push(format!("(err) Error spoofing System IDs: {}", e)),
             }
             match sid_spoofer::spoof_hkcu(dry_run) {
                 Ok(messages) => logs.extend(messages),
-                Err(e) => logs.push(format!("❌ Error spoofing HKCU keys: {}", e)),
+                Err(e) => logs.push(format!("(err) Error spoofing HKCU keys: {}", e)),
             }
             logs
         }));
@@ -43,7 +43,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         tasks.push(tokio::task::spawn_blocking(move || {
             match mac_spoofer::spoof_mac_all(dry_run) {
                 Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error spoofing MAC addresses: {}", e)],
+                Err(e) => vec![format!("(err) Error spoofing MAC addresses: {}", e)],
             }
         }));
     }
@@ -53,7 +53,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         tasks.push(tokio::task::spawn_blocking(move || {
             match volumeid_wrapper::change_volume_id("C", dry_run) {
                 Ok(message) => vec![message],
-                Err(e) => vec![format!("❌ Error changing Volume ID: {}", e)],
+                Err(e) => vec![format!("(err) Error changing Volume ID: {}", e)],
             }
         }));
     }
@@ -63,7 +63,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         tasks.push(tokio::task::spawn_blocking(move || {
             match file_cleaner::clean_cache(dry_run) {
                 Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error cleaning Steam: {}", e)],
+                Err(e) => vec![format!("(err) Error cleaning Steam: {}", e)],
             }
         }));
     }
@@ -73,7 +73,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         tasks.push(tokio::task::spawn_blocking(move || {
             match registry_cleaner::clean_aggressive_registry(dry_run) {
                 Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error with aggressive registry cleaning: {}", e)],
+                Err(e) => vec![format!("(err) Error with aggressive registry cleaning: {}", e)],
             }
         }));
     }
@@ -82,21 +82,20 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     for task in tasks {
         match task.await {
             Ok(logs) => results.extend(logs),
-            Err(e) => results.push(format!("❌ Task failed: {}", e)),
+            Err(e) => results.push(format!("(err) Task failed: {}", e)),
         }
     }
 
     if results.len() == 1 && options.dry_run {
-        results.push("ℹ️ No operations selected.".to_string());
+        results.push("(info) No operations selected.".to_string());
     } else if results.is_empty() {
-        results.push("ℹ️ No operations selected.".to_string());
+        results.push("(info) No operations selected.".to_string());
     }
 
     if options.dry_run {
-        results.push("--- END OF SIMULATION ---".to_string());
+        results.push("(sim) End of simulation.".to_string());
     } else {
-        results.push("-----------------------------------".to_string());
-        results.push("✅ All tasks completed. A restart is recommended.".to_string());
+        results.push("(info) All tasks completed. A restart is recommended.".to_string());
     }
 
     results
@@ -109,11 +108,11 @@ pub async fn apply_hardware_profile(
 ) -> Vec<String> {
     let mut results = Vec::new();
 
-    results.push(format!("━━━ Applying Profile: '{}' ━━━", profile.name));
-    results.push(format!("Created: {}", profile.created_at));
+    results.push(format!("(info) Applying profile: '{}'", profile.name));
+    results.push(format!("(info) Created: {}", profile.created_at));
 
     if dry_run {
-        results.push("--- SIMULATION MODE (DRY RUN) ---".to_string());
+        results.push("(sim) Simulation mode (dry run)".to_string());
     }
 
     // Run blocking operations in parallel
@@ -121,49 +120,48 @@ pub async fn apply_hardware_profile(
 
     // MAC-Adressen anwenden
     if !profile.mac_addresses.is_empty() {
-        results.push(format!("[*] Applying {} MAC address(es)...", profile.mac_addresses.len()));
+        results.push(format!("(info) Applying {} MAC address(es)...", profile.mac_addresses.len()));
         let mac_addresses = profile.mac_addresses.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             match mac_spoofer::spoof_mac_from_profile(&mac_addresses, dry_run) {
                 Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error applying MAC addresses: {}", e)],
+                Err(e) => vec![format!("(err) Error applying MAC addresses: {}", e)],
             }
         }));
     } else {
-        results.push("[!] No MAC addresses in profile.".to_string());
+        results.push("(warn) No MAC addresses in profile.".to_string());
     }
 
     // Volume IDs anwenden
     if !profile.volume_ids.is_empty() {
-        results.push(format!("[*] Applying {} Volume ID(s)...", profile.volume_ids.len()));
+        results.push(format!("(info) Applying {} Volume ID(s)...", profile.volume_ids.len()));
         let volume_ids = profile.volume_ids.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             let mut logs = Vec::new();
             for (drive, vol_id) in &volume_ids {
                 match volumeid_wrapper::change_volume_id_to_specific(drive, vol_id, dry_run) {
                     Ok(message) => logs.push(message),
-                    Err(e) => logs.push(format!("❌ Error setting Volume ID for {}: {}", drive, e)),
+                    Err(e) => logs.push(format!("(err) Error setting Volume ID for {}: {}", drive, e)),
                 }
             }
             logs
         }));
     } else {
-        results.push("[!] No Volume IDs in profile.".to_string());
+        results.push("(warn) No Volume IDs in profile.".to_string());
     }
 
     // Wait for all tasks to complete and collect results
     for task in tasks {
         match task.await {
             Ok(logs) => results.extend(logs),
-            Err(e) => results.push(format!("❌ Task failed: {}", e)),
+            Err(e) => results.push(format!("(err) Task failed: {}", e)),
         }
     }
 
     if dry_run {
-        results.push("--- END OF SIMULATION ---".to_string());
+        results.push("(sim) End of simulation.".to_string());
     } else {
-        results.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━".to_string());
-        results.push("✅ Profile applied. A restart is recommended.".to_string());
+        results.push("(done) Profile applied. A restart is recommended.".to_string());
     }
 
     results
