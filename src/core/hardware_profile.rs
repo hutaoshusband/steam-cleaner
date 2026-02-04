@@ -1,7 +1,4 @@
 // src/core/hardware_profile.rs
-//
-// Hardware-ID Profile Manager
-// Allows saving, loading and applying hardware profiles
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -9,14 +6,10 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-/// A hardware profile contains all relevant hardware IDs
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HardwareProfile {
-    /// Name of the profile (e.g. "Main Account Hardware", "Smurf Hardware")
     pub name: String,
-    /// Time of creation
     pub created_at: String,
-    /// Machine GUID
     pub machine_guid: Option<String>,
     /// Product ID
     pub product_id: Option<String>,

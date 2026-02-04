@@ -52,8 +52,6 @@ struct ProfileState {
     status_message: Option<String>,
 }
 
-// CustomThemeColors moved to style.rs
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
     Idle,
@@ -104,14 +102,12 @@ pub enum Message {
     CustomCleanToggleSteam(bool),
     CustomCleanToggleAggressive(bool),
     ExecuteCustomClean,
-    // Granular options - System ID Spoofing
     CustomCleanToggleMachineGuid(bool),
     CustomCleanToggleHwProfileGuid(bool),
     CustomCleanToggleProductId(bool),
     CustomCleanToggleRegisteredOwner(bool),
     CustomCleanToggleInstallDate(bool),
     CustomCleanToggleComputerName(bool),
-    // Granular options - Registry Game Tracking
     CustomCleanToggleSteamRegistryHkcu(bool),
     CustomCleanToggleValveRegistryHklm(bool),
     CustomCleanToggleValveRegistryHku(bool),
@@ -121,21 +117,17 @@ pub enum Message {
     CustomCleanToggleEacHkcu(bool),
     CustomCleanToggleBattleyeHkcu(bool),
     CustomCleanToggleStartupRun(bool),
-    // Granular options - Registry System Caches
     CustomCleanToggleAppCompatCache(bool),
     CustomCleanToggleShimCache(bool),
     CustomCleanToggleAppCompatFlags(bool),
-    // Granular options - MAC & Volume ID
     CustomCleanToggleMacAddresses(bool),
     CustomCleanToggleVolumeCdrive(bool),
-    // Granular options - Steam Login Files
     CustomCleanToggleLoginUsersVdf(bool),
     CustomCleanToggleConfigVdf(bool),
     CustomCleanToggleLocalconfigVdf(bool),
     CustomCleanToggleSteamAppdataVdf(bool),
     CustomCleanToggleSsfnFiles(bool),
     CustomCleanToggleLibraryfoldersVdf(bool),
-    // Granular options - Steam Directories
     CustomCleanToggleUserdataDir(bool),
     CustomCleanToggleConfigDir(bool),
     CustomCleanToggleLogsDir(bool),
@@ -143,7 +135,6 @@ pub enum Message {
     CustomCleanToggleDumpDir(bool),
     CustomCleanToggleShadercacheDir(bool),
     CustomCleanToggleDepotcacheDir(bool),
-    // Granular options - System Cache Directories
     CustomCleanToggleSteamAppdataDir(bool),
     CustomCleanToggleValveLocallowDir(bool),
     CustomCleanToggleD3dCache(bool),
@@ -152,28 +143,22 @@ pub enum Message {
     CustomCleanToggleUserTemp(bool),
     CustomCleanToggleWindowsTemp(bool),
     CustomCleanToggleCrashDumps(bool),
-    // Granular options - Windows Explorer Caches
     CustomCleanToggleWebCache(bool),
     CustomCleanToggleInetCache(bool),
     CustomCleanToggleWindowsCaches(bool),
     CustomCleanToggleWindowsExplorer(bool),
-    // Granular options - Recent Files
     CustomCleanToggleRecent(bool),
     CustomCleanToggleAutomaticDestinations(bool),
     CustomCleanToggleCustomDestinations(bool),
     CustomCleanToggleTracingDir(bool),
-    // Granular options - GPU Caches
     CustomCleanToggleNvidiaCache(bool),
-    // Granular options - Deep Cleaning
     CustomCleanToggleWindowsPrefetch(bool),
     CustomCleanToggleMyGames(bool),
     CustomCleanToggleEasyanticheat(bool),
     CustomCleanToggleBattleye(bool),
     CustomCleanToggleFaceit(bool),
-    // Granular options - Processes
     CustomCleanToggleKillSteam(bool),
     CustomCleanToggleKillExplorer(bool),
-    // Granular options - Directory contents toggles
     CustomCleanToggleLocalTempContents(bool),
     CustomCleanToggleUserTempContents(bool),
     CustomCleanToggleWindowsTempContents(bool),
@@ -229,7 +214,6 @@ impl Application for CleanerApp {
                 custom_theme_active: false,
                 custom_clean_open: false,
                 custom_clean_options: CleaningOptions {
-                    // Initialize granular options to false
                     spoof_machine_guid: false,
                     spoof_hw_profile_guid: false,
                     spoof_product_id: false,
@@ -642,14 +626,12 @@ impl Application for CleanerApp {
                 self.custom_clean_options.clean_aggressive = value;
                 Command::none()
             }
-            // Granular options - System ID Spoofing
             Message::CustomCleanToggleMachineGuid(value) => { self.custom_clean_options.spoof_machine_guid = value; Command::none() }
             Message::CustomCleanToggleHwProfileGuid(value) => { self.custom_clean_options.spoof_hw_profile_guid = value; Command::none() }
             Message::CustomCleanToggleProductId(value) => { self.custom_clean_options.spoof_product_id = value; Command::none() }
             Message::CustomCleanToggleRegisteredOwner(value) => { self.custom_clean_options.spoof_registered_owner = value; Command::none() }
             Message::CustomCleanToggleInstallDate(value) => { self.custom_clean_options.spoof_install_date = value; Command::none() }
             Message::CustomCleanToggleComputerName(value) => { self.custom_clean_options.spoof_computer_name = value; Command::none() }
-            // Granular options - Registry Game Tracking
             Message::CustomCleanToggleSteamRegistryHkcu(value) => { self.custom_clean_options.delete_steam_registry_hkcu = value; Command::none() }
             Message::CustomCleanToggleValveRegistryHklm(value) => { self.custom_clean_options.delete_valve_registry_hklm = value; Command::none() }
             Message::CustomCleanToggleValveRegistryHku(value) => { self.custom_clean_options.delete_valve_registry_hku = value; Command::none() }
@@ -659,21 +641,18 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleEacHkcu(value) => { self.custom_clean_options.delete_eac_hkcu = value; Command::none() }
             Message::CustomCleanToggleBattleyeHkcu(value) => { self.custom_clean_options.delete_battleye_hkcu = value; Command::none() }
             Message::CustomCleanToggleStartupRun(value) => { self.custom_clean_options.delete_startup_run = value; Command::none() }
-            // Granular options - Registry System Caches
             Message::CustomCleanToggleAppCompatCache(value) => { self.custom_clean_options.clean_app_compat_cache = value; Command::none() }
             Message::CustomCleanToggleShimCache(value) => { self.custom_clean_options.clean_shim_cache = value; Command::none() }
             Message::CustomCleanToggleAppCompatFlags(value) => { self.custom_clean_options.clean_app_compat_flags = value; Command::none() }
-            // Granular options - MAC & Volume ID
             Message::CustomCleanToggleMacAddresses(value) => { self.custom_clean_options.spoof_mac_addresses = value; Command::none() }
             Message::CustomCleanToggleVolumeCdrive(value) => { self.custom_clean_options.spoof_volume_c_drive = value; Command::none() }
-            // Granular options - Steam Login Files
+            Message::CustomCleanToggleLoginUsersVdf(value) => { self.custom_clean_options.delete_login_users_vdf = value; Command::none() }
             Message::CustomCleanToggleLoginUsersVdf(value) => { self.custom_clean_options.delete_login_users_vdf = value; Command::none() }
             Message::CustomCleanToggleConfigVdf(value) => { self.custom_clean_options.delete_config_vdf = value; Command::none() }
             Message::CustomCleanToggleLocalconfigVdf(value) => { self.custom_clean_options.delete_localconfig_vdf = value; Command::none() }
             Message::CustomCleanToggleSteamAppdataVdf(value) => { self.custom_clean_options.delete_steam_appdata_vdf = value; Command::none() }
             Message::CustomCleanToggleSsfnFiles(value) => { self.custom_clean_options.delete_ssfn_files = value; Command::none() }
             Message::CustomCleanToggleLibraryfoldersVdf(value) => { self.custom_clean_options.delete_libraryfolders_vdf = value; Command::none() }
-            // Granular options - Steam Directories
             Message::CustomCleanToggleUserdataDir(value) => { self.custom_clean_options.delete_userdata_dir = value; Command::none() }
             Message::CustomCleanToggleConfigDir(value) => { self.custom_clean_options.delete_config_dir = value; Command::none() }
             Message::CustomCleanToggleLogsDir(value) => { self.custom_clean_options.delete_logs_dir = value; Command::none() }
@@ -681,7 +660,6 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleDumpDir(value) => { self.custom_clean_options.delete_dump_dir = value; Command::none() }
             Message::CustomCleanToggleShadercacheDir(value) => { self.custom_clean_options.delete_shadercache_dir = value; Command::none() }
             Message::CustomCleanToggleDepotcacheDir(value) => { self.custom_clean_options.delete_depotcache_dir = value; Command::none() }
-            // Granular options - System Cache Directories
             Message::CustomCleanToggleSteamAppdataDir(value) => { self.custom_clean_options.delete_steam_appdata_dir = value; Command::none() }
             Message::CustomCleanToggleValveLocallowDir(value) => { self.custom_clean_options.delete_valve_locallow_dir = value; Command::none() }
             Message::CustomCleanToggleD3dCache(value) => { self.custom_clean_options.delete_d3d_cache = value; Command::none() }
@@ -690,25 +668,20 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleUserTemp(value) => { self.custom_clean_options.delete_user_temp = value; Command::none() }
             Message::CustomCleanToggleWindowsTemp(value) => { self.custom_clean_options.delete_windows_temp = value; Command::none() }
             Message::CustomCleanToggleCrashDumps(value) => { self.custom_clean_options.delete_crash_dumps = value; Command::none() }
-            // Granular options - Windows Explorer Caches
             Message::CustomCleanToggleWebCache(value) => { self.custom_clean_options.delete_web_cache = value; Command::none() }
             Message::CustomCleanToggleInetCache(value) => { self.custom_clean_options.delete_inet_cache = value; Command::none() }
             Message::CustomCleanToggleWindowsCaches(value) => { self.custom_clean_options.delete_windows_caches = value; Command::none() }
             Message::CustomCleanToggleWindowsExplorer(value) => { self.custom_clean_options.delete_windows_explorer = value; Command::none() }
-            // Granular options - Recent Files
             Message::CustomCleanToggleRecent(value) => { self.custom_clean_options.delete_recent = value; Command::none() }
             Message::CustomCleanToggleAutomaticDestinations(value) => { self.custom_clean_options.delete_automatic_destinations = value; Command::none() }
             Message::CustomCleanToggleCustomDestinations(value) => { self.custom_clean_options.delete_custom_destinations = value; Command::none() }
             Message::CustomCleanToggleTracingDir(value) => { self.custom_clean_options.delete_tracing_dir = value; Command::none() }
-            // Granular options - GPU Caches
             Message::CustomCleanToggleNvidiaCache(value) => { self.custom_clean_options.delete_nvidia_cache = value; Command::none() }
-            // Granular options - Deep Cleaning
             Message::CustomCleanToggleWindowsPrefetch(value) => { self.custom_clean_options.delete_windows_prefetch = value; Command::none() }
             Message::CustomCleanToggleMyGames(value) => { self.custom_clean_options.delete_my_games = value; Command::none() }
             Message::CustomCleanToggleEasyanticheat(value) => { self.custom_clean_options.delete_easyanticheat = value; Command::none() }
             Message::CustomCleanToggleBattleye(value) => { self.custom_clean_options.delete_battleye = value; Command::none() }
             Message::CustomCleanToggleFaceit(value) => { self.custom_clean_options.delete_faceit = value; Command::none() }
-            // Granular options - Processes
             Message::CustomCleanToggleKillSteam(value) => { self.custom_clean_options.kill_steam_processes = value; Command::none() }
             Message::CustomCleanToggleKillExplorer(value) => { self.custom_clean_options.kill_explorer = value; Command::none() }
             Message::CustomCleanToggleLocalTempContents(value) => { self.custom_clean_options.delete_local_temp_contents = value; Command::none() }
@@ -890,10 +863,7 @@ impl CleanerApp {
 
         let dry_run_toggle = make_toggler(&self.translations.main_window.simulation_mode_dry_run, self.options.dry_run, Message::ToggleDryRun, active_colors, lang_font);
 
-        // Language button - show current language with globe icon
         let lang_code = self.current_language.name();
-        
-        // Simple inline SVG for language icon - using white with dark outline for visibility
         let lang_svg = r#"<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="9" fill="white" stroke="black" stroke-width="1.5"/>
             <ellipse cx="12" cy="12" rx="9" ry="2.5" fill="none" stroke="black" stroke-width="1.2"/>
@@ -961,7 +931,6 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill);
 
-        // Header row with title and language button
         let log_header = row![
             text(&self.translations.main_window.verbose_log_output).size(16).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             Space::with_width(Length::Fill),
@@ -988,7 +957,6 @@ impl CleanerApp {
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })));
 
         if self.language_selector_open {
-            // Language selector overlay
             let language_buttons: Column<'_, Message> = Language::all().iter().fold(
                 Column::new().spacing(8),
                 |col, &lang| {
@@ -1044,7 +1012,6 @@ impl CleanerApp {
                 .padding(20)
                 .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
-            // Center the overlay
             let centered = row![
                 Space::with_width(Length::Fill),
                 column![
@@ -1523,7 +1490,6 @@ impl CleanerApp {
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
-        // Section: Processes
         let processes_section = make_section(
             &self.translations.custom_clean.processes,
             column![
@@ -1532,7 +1498,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: System ID Spoofing
         let system_id_section = make_section(
             &self.translations.custom_clean.system_id_spoofing,
             column![
@@ -1545,7 +1510,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Registry Game Tracking
         let game_tracking_section = make_section(
             &self.translations.custom_clean.registry_game_tracking,
             column![
@@ -1561,7 +1525,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Registry System Caches
         let registry_caches_section = make_section(
             &self.translations.custom_clean.registry_system_caches,
             column![
@@ -1571,16 +1534,14 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: MAC & Volume ID
         let mac_volume_section = make_section(
-            "MAC Address & Volume ID Spoofing",
+            &self.translations.custom_clean.mac_volume_spoofing,
             column![
                 make_checkbox(&self.translations.custom_clean.spoof_mac_addresses, self.custom_clean_options.spoof_mac_addresses, Message::CustomCleanToggleMacAddresses, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.spoof_volume_c_drive, self.custom_clean_options.spoof_volume_c_drive, Message::CustomCleanToggleVolumeCdrive, active_colors, lang_font),
             ].spacing(10)
         );
 
-        // Section: Steam Login Files
         let steam_login_section = make_section(
             &self.translations.custom_clean.steam_login_files,
             column![
@@ -1593,7 +1554,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Steam Directories
         let steam_dirs_section = make_section(
             &self.translations.custom_clean.steam_directories,
             column![
@@ -1607,7 +1567,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: System Cache Directories
         let system_cache_section = make_section(
             &self.translations.custom_clean.system_cache_directories,
             column![
@@ -1622,7 +1581,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Windows Explorer Caches
         let explorer_caches_section = make_section(
             &self.translations.custom_clean.windows_explorer_caches,
             column![
@@ -1633,7 +1591,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Recent Files
         let recent_files_section = make_section(
             &self.translations.custom_clean.recent_files,
             column![
@@ -1644,7 +1601,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: GPU Caches
         let gpu_caches_section = make_section(
             &self.translations.custom_clean.gpu_caches,
             column![
@@ -1652,7 +1608,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Section: Deep Cleaning
         let deep_cleaning_section = make_section(
             &self.translations.custom_clean.deep_cleaning,
             column![
@@ -1664,7 +1619,6 @@ impl CleanerApp {
             ].spacing(10)
         );
 
-        // Organize sections into a 2-column layout
         let left_column = column![
             processes_section,
             Space::with_height(Length::Fixed(15.0)),

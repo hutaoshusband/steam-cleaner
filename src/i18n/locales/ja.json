@@ -83,6 +83,7 @@
     "system_id_spoofing": "システムIDスプーフィング",
     "registry_game_tracking": "レジストリ - ゲーム追跡",
     "registry_system_caches": "レジストリ - システムキャッシュ",
+    "mac_volume_spoofing": "MAC とボリューム ID の偽装",
     "mac_address_spoofing": "MACアドレススプーフィング",
     "volume_id_spoofing": "ボリュームIDスプーフィング",
     "steam_login_files": "Steamログインファイル",

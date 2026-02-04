@@ -83,6 +83,7 @@
     "system_id_spoofing": "系统ID欺骗",
     "registry_game_tracking": "注册表 - 游戏跟踪",
     "registry_system_caches": "注册表 - 系统缓存",
+    "mac_volume_spoofing": "MAC 与卷 ID 欺骗",
     "mac_address_spoofing": "MAC地址欺骗",
     "volume_id_spoofing": "卷ID欺骗",
     "steam_login_files": "Steam登录文件",

@@ -83,6 +83,7 @@
     "system_id_spoofing": "Подмена ID системы",
     "registry_game_tracking": "Реестр - Отслеживание игр",
     "registry_system_caches": "Реестр - Системные кэши",
+    "mac_volume_spoofing": "Подмена MAC и ID тома",
     "mac_address_spoofing": "Подмена MAC-адреса",
     "volume_id_spoofing": "Подмена ID тома",
     "steam_login_files": "Файлы входа Steam",

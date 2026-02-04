@@ -83,6 +83,7 @@
     "system_id_spoofing": "System ID Spoofing",
     "registry_game_tracking": "Registry - Game Tracking",
     "registry_system_caches": "Registry - System Caches",
+    "mac_volume_spoofing": "MAC & Volume ID Spoofing",
     "mac_address_spoofing": "MAC Address Spoofing",
     "volume_id_spoofing": "Volume ID Spoofing",
     "steam_login_files": "Steam Login Files",
