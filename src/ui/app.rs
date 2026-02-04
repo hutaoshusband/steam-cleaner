@@ -9,6 +9,7 @@ use crate::core::hardware_profile::{HardwareProfile, ProfileManager};
 use crate::core::inspector::{gather_system_info, SystemInfo};
 use crate::ui::style;
 use crate::ui::redist_view;
+use crate::i18n::{self, Language, Translations};
 use crate::core::redist;
 #[cfg(windows)]
 use crate::core::steam;
@@ -31,6 +32,8 @@ pub struct CleanerApp {
     custom_clean_open: bool,
     custom_clean_options: CleaningOptions,
     rainbow_hue: f32,
+    current_language: Language,
+    translations: Translations,
 }
 
 #[derive(Default)]
@@ -100,6 +103,7 @@ pub enum Message {
     CustomCleanToggleSteam(bool),
     CustomCleanToggleAggressive(bool),
     ExecuteCustomClean,
+    ChangeLanguage(Language),
     RainbowTick(std::time::Instant),
 }
 
@@ -112,12 +116,14 @@ impl Application for CleanerApp {
     fn new(_flags: ()) -> (Self, Command<Message>) {
         let profile_manager = ProfileManager::load().unwrap_or_default();
         let profile_names = profile_manager.profile_names();
+        let current_language = Language::English;
+        let translations = i18n::load_translations(current_language);
 
         (
             Self {
                 state: State::Idle,
                 options: CleaningOptions::default(),
-                log_messages: vec!["[*] Ready. Select options and click Execute.".to_string()],
+                log_messages: vec![translations.main_window.ready_message.clone()],
                 inspector_open: false,
                 inspector_state: InspectorState::default(),
                 profile_manager,
@@ -138,13 +144,15 @@ impl Application for CleanerApp {
                 custom_clean_open: false,
                 custom_clean_options: CleaningOptions::default(),
                 rainbow_hue: 0.0,
+                current_language,
+                translations,
             },
             Command::none(),
         )
     }
 
     fn title(&self) -> String {
-        "Steam Cleaner 0.1.8".to_string()
+        self.translations.app_title.clone()
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
@@ -177,19 +185,19 @@ impl Application for CleanerApp {
                 if self.state == State::Idle {
                     if self.options.clean_aggressive {
                         let confirmation = tfd::message_box_yes_no(
-                            "Aggressive Cleaning Warning",
-                            "Aggressive cleaning can have unintended side effects. Are you sure you want to continue?",
+                            &self.translations.common.aggressive_cleaning_warning_title,
+                            &self.translations.common.aggressive_cleaning_warning_message,
                             tfd::MessageBoxIcon::Warning,
                             tfd::YesNo::No,
                         );
                         if confirmation == tfd::YesNo::No {
-                            self.log_messages.push("Aggressive cleaning cancelled.".to_string());
+                            self.log_messages.push(self.translations.common.aggressive_cleaning_cancelled.clone());
                             return Command::none();
                         }
                     }
 
                     self.state = State::Cleaning;
-                    self.log_messages = vec!["[*] Starting cleaning...".to_string()];
+                    self.log_messages = vec![self.translations.common.starting_cleaning.clone()];
                     Command::perform(run_all_selected(self.options), Message::CleaningFinished)
                 } else {
                     Command::none()
@@ -234,7 +242,7 @@ impl Application for CleanerApp {
             Message::SaveCurrentAsProfile => {
                 let name = self.profile_state.new_profile_name.trim().to_string();
                 if name.is_empty() {
-                    self.profile_state.status_message = Some("[!] Please enter a profile name.".to_string());
+                    self.profile_state.status_message = Some(self.translations.common.please_enter_profile_name.clone());
                     return Command::none();
                 }
 
@@ -246,10 +254,10 @@ impl Application for CleanerApp {
                                 manager.add_or_update_profile(profile);
                                 match manager.save() {
                                     Ok(_) => Ok(name),
-                                    Err(e) => Err(format!("Failed to save: {}", e)),
+                                    Err(e) => Err(format!("{}", e)),
                                 }
                             }
-                            Err(e) => Err(format!("Failed to snapshot: {}", e)),
+                            Err(e) => Err(format!("{}", e)),
                         }
                     },
                     Message::ProfileSaved,
@@ -258,14 +266,14 @@ impl Application for CleanerApp {
             Message::ProfileSaved(result) => {
                 match result {
                     Ok(name) => {
-                        self.profile_state.status_message = Some(format!("[+] Profile '{}' saved!", name));
+                        self.profile_state.status_message = Some(i18n::format_string(&self.translations.common.profile_saved, &[&name]));
                         self.profile_state.new_profile_name.clear();
                         self.profile_manager = ProfileManager::load().unwrap_or_default();
                         self.profile_state.profile_names = self.profile_manager.profile_names();
                         self.profile_state.selected_profile = Some(name);
                     }
                     Err(e) => {
-                        self.profile_state.status_message = Some(format!("[-] {}", e));
+                        self.profile_state.status_message = Some(i18n::format_string(&self.translations.common.failed_to_save, &[&e]));
                     }
                 }
                 Command::none()
@@ -282,46 +290,46 @@ impl Application for CleanerApp {
                             Message::ProfileApplied,
                         );
                     } else {
-                        self.profile_state.status_message = Some("[!] Profile not found.".to_string());
+                        self.profile_state.status_message = Some(self.translations.common.profile_not_found.clone());
                     }
                 } else {
-                    self.profile_state.status_message = Some("[!] Please select a profile first.".to_string());
+                    self.profile_state.status_message = Some(self.translations.common.please_select_profile.clone());
                 }
                 Command::none()
             }
             Message::ProfileApplied(results) => {
                 self.profile_state.is_applying = false;
                 self.log_messages = results;
-                self.profile_state.status_message = Some("[+] Profile applied! Check log for details.".to_string());
+                self.profile_state.status_message = Some(self.translations.common.profile_applied.clone());
                 Command::none()
             }
             Message::DeleteSelectedProfile => {
                 if let Some(name) = &self.profile_state.selected_profile.clone() {
                     let confirmation = tfd::message_box_yes_no(
-                        "Delete Profile",
-                        &format!("Are you sure you want to delete profile '{}'?", name),
+                        &self.translations.common.delete_profile_title,
+                        &i18n::format_string(&self.translations.common.delete_profile_confirmation, &[name]),
                         tfd::MessageBoxIcon::Question,
                         tfd::YesNo::No,
                     );
                     if confirmation == tfd::YesNo::Yes {
                         self.profile_manager.remove_profile(name);
                         if let Err(e) = self.profile_manager.save() {
-                            self.profile_state.status_message = Some(format!("[-] Failed to save: {}", e));
+                            self.profile_state.status_message = Some(i18n::format_string(&self.translations.common.failed_to_save, &[&e.to_string()]));
                         } else {
-                            self.profile_state.status_message = Some(format!("[+] Profile '{}' deleted.", name));
+                            self.profile_state.status_message = Some(i18n::format_string(&self.translations.common.profile_deleted, &[name]));
                             self.profile_state.profile_names = self.profile_manager.profile_names();
                             self.profile_state.selected_profile = None;
                         }
                     }
                 } else {
-                    self.profile_state.status_message = Some("[!] Please select a profile first.".to_string());
+                    self.profile_state.status_message = Some(self.translations.common.please_select_profile.clone());
                 }
                 Command::none()
             }
             Message::RefreshProfiles => {
                 self.profile_manager = ProfileManager::load().unwrap_or_default();
                 self.profile_state.profile_names = self.profile_manager.profile_names();
-                self.profile_state.status_message = Some("[*] Profiles refreshed.".to_string());
+                self.profile_state.status_message = Some(self.translations.common.profiles_refreshed.clone());
                 Command::none()
             }
             Message::OpenRedist => {
@@ -405,37 +413,37 @@ impl Application for CleanerApp {
                 Command::none()
             }
             Message::PickBackgroundColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Background Color", tfd::DefaultColorValue::Hex("#1a1b26")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_background_color, tfd::DefaultColorValue::Hex("#1a1b26")) {
                     self.custom_colors.background = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
             }
             Message::PickSurfaceColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Surface Color", tfd::DefaultColorValue::Hex("#24283b")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_surface_color, tfd::DefaultColorValue::Hex("#24283b")) {
                     self.custom_colors.surface = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
             }
             Message::PickTextColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Text Color", tfd::DefaultColorValue::Hex("#c0caf5")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_text_color, tfd::DefaultColorValue::Hex("#c0caf5")) {
                     self.custom_colors.text = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
             }
             Message::PickPrimaryColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Primary Color", tfd::DefaultColorValue::Hex("#7aa2f7")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_primary_color, tfd::DefaultColorValue::Hex("#7aa2f7")) {
                     self.custom_colors.primary = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
             }
             Message::PickDangerColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Danger Color", tfd::DefaultColorValue::Hex("#f7768e")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_danger_color, tfd::DefaultColorValue::Hex("#f7768e")) {
                     self.custom_colors.danger = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
             }
             Message::PickSuccessColor => {
-                if let Some(rgb) = tfd::color_chooser_dialog("Pick Success Color", tfd::DefaultColorValue::Hex("#9ece6a")) {
+                if let Some(rgb) = tfd::color_chooser_dialog(&self.translations.common.pick_success_color, tfd::DefaultColorValue::Hex("#9ece6a")) {
                     self.custom_colors.success = Color::from_rgb8(rgb.1[0], rgb.1[1], rgb.1[2]);
                 }
                 Command::none()
@@ -478,24 +486,29 @@ impl Application for CleanerApp {
                 if self.state == State::Idle {
                     if self.custom_clean_options.clean_aggressive {
                         let confirmation = tfd::message_box_yes_no(
-                            "Aggressive Cleaning Warning",
-                            "Aggressive cleaning can have unintended side effects. Are you sure you want to continue?",
+                            &self.translations.common.aggressive_cleaning_warning_title,
+                            &self.translations.common.aggressive_cleaning_warning_message,
                             tfd::MessageBoxIcon::Warning,
                             tfd::YesNo::No,
                         );
                         if confirmation == tfd::YesNo::No {
-                            self.log_messages.push("Aggressive cleaning cancelled.".to_string());
+                            self.log_messages.push(self.translations.common.aggressive_cleaning_cancelled.clone());
                             return Command::none();
                         }
                     }
 
                     self.state = State::Cleaning;
-                    self.log_messages = vec!["[*] Starting custom cleaning...".to_string()];
+                    self.log_messages = vec![self.translations.common.starting_custom_cleaning.clone()];
                     let options = self.custom_clean_options;
                     Command::perform(run_all_selected(options), Message::CleaningFinished)
                 } else {
                     Command::none()
                 }
+            }
+            Message::ChangeLanguage(lang) => {
+                self.current_language = lang;
+                self.translations = i18n::load_translations(lang);
+                Command::none()
             }
             Message::RainbowTick(_) => {
                 self.rainbow_hue += 0.005;
@@ -520,7 +533,7 @@ impl Application for CleanerApp {
             } else {
                 None
             };
-            redist_view::view(&self.redist_state, active_colors).map(Message::Redist)
+            redist_view::view(&self.redist_state, active_colors, &self.translations, self.current_language).map(Message::Redist)
         } else if self.custom_clean_open {
             self.view_custom_clean_window()
         } else if self.custom_colors_open {
@@ -540,32 +553,37 @@ impl Application for CleanerApp {
 impl CleanerApp {
     fn view_main_window(&self) -> Element<'_, Message> {
         let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+        let lang_font = self.current_language.font();
 
-        fn make_toggler<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
-            toggler(Some(label.to_string()), value, msg)
+        fn make_toggler<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>, font: Option<iced::Font>) -> Element<'a, Message> {
+            let toggler = toggler(Some(label.to_string()), value, msg)
                 .style(iced::theme::Toggler::Custom(Box::new(style::CustomTogglerStyle { custom_colors: colors })))
                 .width(Length::Fill)
-                .text_size(15)
-                .into()
+                .text_size(15);
+            if let Some(f) = font {
+                toggler.font(f).into()
+            } else {
+                toggler.into()
+            }
         }
 
         let system_spoofing_options = column![
-            text("System Spoofing").size(15).style(style::title_color(&self.current_theme)),
-            make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds, active_colors),
-            make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac, active_colors),
-            make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId, active_colors),
+            text(&self.translations.main_window.system_spoofing).size(15).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+            make_toggler(&self.translations.main_window.spoof_system_ids, self.options.spoof_system_ids, Message::ToggleSystemIds, active_colors, lang_font),
+            make_toggler(&self.translations.main_window.spoof_mac_address, self.options.spoof_mac, Message::ToggleMac, active_colors, lang_font),
+            make_toggler(&self.translations.main_window.spoof_volume_id, self.options.spoof_volume_id, Message::ToggleVolumeId, active_colors, lang_font),
         ]
         .spacing(6);
 
         let steam_cleaning_options = column![
-            text("Steam Cleaning").size(15).style(style::title_color(&self.current_theme)),
-            make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam, active_colors),
+            text(&self.translations.main_window.steam_cleaning).size(15).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+            make_toggler(&self.translations.main_window.clean_steam, self.options.clean_steam, Message::ToggleSteam, active_colors, lang_font),
         ]
         .spacing(6);
 
         let aggressive_cleaning_options = column![
-            text("Aggressive Cleaning").size(15).style(style::title_color(&self.current_theme)),
-            make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive, active_colors),
+            text(&self.translations.main_window.aggressive_cleaning).size(15).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+            make_toggler(&self.translations.main_window.aggressive_clean, self.options.clean_aggressive, Message::ToggleAggressive, active_colors, lang_font),
         ]
         .spacing(6);
 
@@ -581,30 +599,30 @@ impl CleanerApp {
             .padding(12)
             .width(Length::Fill);
 
-        let inspector_button = button(text("Inspector & Profiles").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let inspector_button = button(text(&self.translations.main_window.inspector_and_profiles).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenInspector)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let redist_button = button(text("Steam Redist Cleaner (Beta)").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let redist_button = button(text(&self.translations.main_window.steam_redist_cleaner_beta).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenRedist)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let themes_button = button(text("Themes & Appearance").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let themes_button = button(text(&self.translations.main_window.themes_and_appearance).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenThemes)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let (button_text_str, on_press_message) = match self.state {
-            State::Idle => ("Execute Cleaning", Some(Message::Execute)),
-            State::Cleaning => ("Cleaning...", None),
+            State::Idle => (&self.translations.main_window.execute_cleaning, Some(Message::Execute)),
+            State::Cleaning => (&self.translations.main_window.cleaning, None),
         };
 
-        let mut execute_button = button(text(button_text_str).size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let mut execute_button = button(text(button_text_str).size(15).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(16)
             .width(Length::Fill)
             .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
@@ -613,15 +631,24 @@ impl CleanerApp {
             execute_button = execute_button.on_press(msg);
         }
 
-        let backup_button = button(text("Backup Steam Data").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let backup_button = button(text(&self.translations.main_window.backup_steam_data).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::Backup)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun, active_colors);
+        let dry_run_toggle = make_toggler(&self.translations.main_window.simulation_mode_dry_run, self.options.dry_run, Message::ToggleDryRun, active_colors, lang_font);
 
-        let custom_clean_button = button(text("Custom Clean").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let language_picker = pick_list(
+            Language::all(),
+            Some(self.current_language),
+            Message::ChangeLanguage,
+        )
+        .width(Length::Fill)
+        .text_size(14)
+        .font(lang_font.unwrap_or(iced::Font::DEFAULT));
+
+        let custom_clean_button = button(text(&self.translations.main_window.custom_clean).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenCustomClean)
@@ -632,6 +659,11 @@ impl CleanerApp {
             Space::with_height(Length::Fixed(5.0)),
             container(dry_run_toggle)
                 .padding(12)
+                .width(Length::Fill)
+                .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
+            Space::with_height(Length::Fixed(5.0)),
+            container(language_picker)
+                .padding([8, 12])
                 .width(Length::Fill)
                 .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
             Space::with_height(Length::Fixed(5.0)),
@@ -652,7 +684,7 @@ impl CleanerApp {
         .width(Length::Fill);
 
         let left_panel = container(left_panel_content)
-            .width(Length::FillPortion(1))
+            .width(Length::FillPortion(3))
             .height(Length::Fill)
             .padding(12);
 
@@ -667,10 +699,10 @@ impl CleanerApp {
             .height(Length::Fill);
 
         let right_panel = Column::new()
-            .push(text("Verbose Log Output").size(16).style(style::title_color(&self.current_theme)))
+            .push(text(&self.translations.main_window.verbose_log_output).size(16).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(console_box)
-            .width(Length::FillPortion(2))
+            .width(Length::FillPortion(7))
             .height(Length::Fill)
             .padding(15);
 
@@ -689,27 +721,28 @@ impl CleanerApp {
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
         let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
-        
+        let lang_font = self.current_language.font();
+
         let header = container(
-            text("System Inspector & Profile Manager").size(24).style(style::title_color(&self.current_theme))
+            text(&self.translations.inspector.title).size(24).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
         .padding(20)
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
         let system_info_section = if self.inspector_state.is_loading {
-            Column::new().push(text("Loading system information..."))
+            Column::new().push(text(&self.translations.inspector.loading_system_info).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
         } else {
             let info = &self.inspector_state.info;
             let info_col = column![
-                text("Current System Hardware IDs").size(18).style(style::title_color(&self.current_theme)),
+                text(&self.translations.inspector.current_system_hardware_ids).size(18).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
                 Space::with_height(Length::Fixed(10.0)),
-                text(format!("Machine GUID: {}", info.machine_guid)),
-                text(format!("Product ID: {}", info.product_id)),
-                text(format!("Computer Name: {}", info.computer_name)),
-                text(format!("Volume ID (C:): {}", info.volume_id)),
+                text(i18n::format_string(&self.translations.inspector.machine_guid, &[&info.machine_guid])).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                text(i18n::format_string(&self.translations.inspector.product_id, &[&info.product_id])).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                text(i18n::format_string(&self.translations.inspector.computer_name, &[&info.computer_name])).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                text(i18n::format_string(&self.translations.inspector.volume_id_c, &[&info.volume_id])).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
                 Space::with_height(Length::Fixed(10.0)),
-                text("MAC Addresses:").size(16),
+                text(&self.translations.inspector.mac_addresses).size(16).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             ]
             .spacing(8);
 
@@ -727,25 +760,26 @@ impl CleanerApp {
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
-        let profile_header = text("Hardware ID Profile Manager").size(18).style(style::title_color(&self.current_theme));
+        let profile_header = text(&self.translations.inspector.hardware_id_profile_manager).size(18).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT));
 
         let profile_dropdown: Element<'_, Message> = pick_list(
             self.profile_state.profile_names.clone(),
             self.profile_state.selected_profile.clone(),
             Message::ProfileSelected,
         )
-        .placeholder("Select a profile...")
+        .placeholder(&self.translations.inspector.select_a_profile)
         .width(Length::Fill)
+        .font(lang_font.unwrap_or(iced::Font::DEFAULT))
         .into();
 
         let dropdown_row = Row::new()
-            .push(text("Load Profile: ").size(14))
+            .push(text(&self.translations.inspector.load_profile).size(14).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .push(profile_dropdown)
             .spacing(10)
             .align_items(iced::Alignment::Center);
 
         let apply_button = button(
-            text("Apply").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.inspector.apply).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(8)
             .width(Length::FillPortion(1))
@@ -753,7 +787,7 @@ impl CleanerApp {
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let delete_button = button(
-            text("Delete").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.inspector.delete).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(8)
             .width(Length::FillPortion(1))
@@ -767,15 +801,16 @@ impl CleanerApp {
             .spacing(5);
 
         let new_profile_input = text_input(
-            "Enter profile name...",
+            &self.translations.inspector.enter_profile_name,
             &self.profile_state.new_profile_name,
         )
         .on_input(Message::NewProfileNameChanged)
         .padding(10)
+        .font(lang_font.unwrap_or(iced::Font::DEFAULT))
         .width(Length::Fill);
 
         let save_button = button(
-            text("Save Current as Profile").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.inspector.save_current_as_profile).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(10)
             .width(Length::Fill)
@@ -783,7 +818,7 @@ impl CleanerApp {
             .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
 
         let status_text: Element<'_, Message> = if let Some(msg) = &self.profile_state.status_message {
-            text(msg).size(13).into()
+            text(msg).size(13).font(lang_font.unwrap_or(iced::Font::DEFAULT)).into()
         } else {
             Space::with_height(Length::Fixed(13.0)).into()
         };
@@ -793,9 +828,9 @@ impl CleanerApp {
                 let mac_count = profile.mac_addresses.len();
                 let vol_count = profile.volume_ids.len();
                 column![
-                    text(format!("Profile: {}", profile.name)).size(14),
-                    text(format!("  Created: {}", profile.created_at)).size(12),
-                    text(format!("  {} MAC address(es), {} Volume ID(s)", mac_count, vol_count)).size(12),
+                    text(i18n::format_string(&self.translations.inspector.profile, &[&profile.name])).size(14).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                    text(i18n::format_string(&self.translations.inspector.created, &[&profile.created_at])).size(12).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                    text(i18n::format_string(&self.translations.inspector.mac_addresses_count, &[&mac_count.to_string(), &vol_count.to_string()])).size(12).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
                 ]
                 .spacing(3)
                 .into()
@@ -803,8 +838,9 @@ impl CleanerApp {
                 Space::with_height(Length::Fixed(1.0)).into()
             }
         } else {
-            text("Select a profile to see details, or save current hardware IDs as a new profile.")
+            text(&self.translations.inspector.select_profile_details)
                 .size(13)
+                .font(lang_font.unwrap_or(iced::Font::DEFAULT))
                 .into()
         };
 
@@ -817,7 +853,7 @@ impl CleanerApp {
             Space::with_height(Length::Fixed(10.0)),
             profile_actions_row,
             Space::with_height(Length::Fixed(20.0)),
-            text("Create New Profile from Current Hardware:").size(14),
+            text(&self.translations.inspector.create_new_profile).size(14).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             Space::with_height(Length::Fixed(5.0)),
             new_profile_input,
             Space::with_height(Length::Fixed(10.0)),
@@ -841,7 +877,7 @@ impl CleanerApp {
         .width(Length::Fill);
 
         let back_button = button(
-            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.inspector.back_to_main).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(10)
             .width(Length::Fixed(180.0))
@@ -874,15 +910,16 @@ impl CleanerApp {
 
     fn view_theme_selection(&self) -> Element<'_, Message> {
         let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+        let lang_font = self.current_language.font();
 
         let header = container(
-            text("Appearance Settings").size(24).style(style::title_color(&self.current_theme))
+            text(&self.translations.themes.title).size(24).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
         .padding(20)
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
-        fn theme_btn<'a>(label: &'static str, theme: Theme, current: &Theme, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
+        fn theme_btn<'a>(label: &'a str, theme: Theme, current: &Theme, colors: Option<style::CustomThemeColors>, font: Option<iced::Font>) -> Element<'a, Message> {
             let is_selected = theme == *current;
 
             let btn_style = if is_selected {
@@ -891,7 +928,7 @@ impl CleanerApp {
                 style::ThemedButtonStyle::Primary(colors)
             };
 
-            button(text(label).size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+            button(text(label).size(16).horizontal_alignment(iced::alignment::Horizontal::Center).font(font.unwrap_or(iced::Font::DEFAULT)))
                 .padding(15)
                 .width(Length::Fill)
                 .on_press(Message::ThemeSelected(theme))
@@ -900,15 +937,15 @@ impl CleanerApp {
         }
 
         let theme_buttons = column![
-            text("Select Application Theme:").size(18).style(style::title_color(&self.current_theme)),
+            text(&self.translations.themes.select_application_theme).size(18).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             Space::with_height(Length::Fixed(15.0)),
-            theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme, active_colors),
-            theme_btn("Light Mode", Theme::Light, &self.current_theme, active_colors),
-            theme_btn("Neutral Dark", Theme::Dracula, &self.current_theme, active_colors),
-            theme_btn("Ultra Dark", Theme::Nord, &self.current_theme, active_colors),
-            theme_btn("Cream", Theme::SolarizedLight, &self.current_theme, active_colors),
+            theme_btn(&self.translations.themes.red_retro_default, Theme::Dark, &self.current_theme, active_colors, lang_font),
+            theme_btn(&self.translations.themes.light_mode, Theme::Light, &self.current_theme, active_colors, lang_font),
+            theme_btn(&self.translations.themes.neutral_dark, Theme::Dracula, &self.current_theme, active_colors, lang_font),
+            theme_btn(&self.translations.themes.ultra_dark, Theme::Nord, &self.current_theme, active_colors, lang_font),
+            theme_btn(&self.translations.themes.cream, Theme::SolarizedLight, &self.current_theme, active_colors, lang_font),
             Space::with_height(Length::Fixed(20.0)),
-            button(text("Custom Colors...").size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+            button(text(&self.translations.themes.custom_colors).size(16).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
                 .padding(15)
                 .width(Length::Fill)
                 .on_press(Message::OpenCustomColors)
@@ -924,7 +961,7 @@ impl CleanerApp {
             .center_x();
 
         let back_button = button(
-            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.themes.back_to_main).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(10)
             .width(Length::Fixed(180.0))
@@ -958,16 +995,19 @@ impl CleanerApp {
     }
 
     fn view_custom_colors(&self) -> Element<'_, Message> {
+        let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+        let lang_font = self.current_language.font();
+
         let header = container(
-            text("Theme Customizer").size(24).style(style::title_color(&self.current_theme))
+            text(&self.translations.theme_customizer.title).size(24).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
         .padding(20)
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
-        let color_btn = |label: &str, color: Color, msg: Message| -> Element<Message> {
+        let color_btn = |label: &str, color: Color, msg: Message, font: Option<iced::Font>| -> Element<Message> {
             column![
-                text(label).size(14).style(style::title_color(&self.current_theme)),
+                text(label).size(14).style(active_colors.map_or_else(|| style::TITLE_COLOR, |c| c.text)).font(font.unwrap_or(iced::Font::DEFAULT)),
                 button(
                     container(Space::with_width(Length::Fill))
                         .width(Length::Fill)
@@ -987,10 +1027,10 @@ impl CleanerApp {
 
         let core_colors = container(
             column![
-                text("Core Layout").size(18),
-                color_btn("Background", self.custom_colors.background, Message::PickBackgroundColor),
-                color_btn("Surface / Panels", self.custom_colors.surface, Message::PickSurfaceColor),
-                color_btn("Text Color", self.custom_colors.text, Message::PickTextColor),
+                text(&self.translations.theme_customizer.core_layout).size(18).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                color_btn(&self.translations.theme_customizer.background, self.custom_colors.background, Message::PickBackgroundColor, lang_font),
+                color_btn(&self.translations.theme_customizer.surface_panels, self.custom_colors.surface, Message::PickSurfaceColor, lang_font),
+                color_btn(&self.translations.theme_customizer.text_color, self.custom_colors.text, Message::PickTextColor, lang_font),
             ]
             .spacing(15)
             .width(Length::Fill)
@@ -1001,10 +1041,10 @@ impl CleanerApp {
 
         let accent_colors = container(
             column![
-                text("Accents & Status").size(18),
-                color_btn("Primary Accent", self.custom_colors.primary, Message::PickPrimaryColor),
-                color_btn("Danger / Error", self.custom_colors.danger, Message::PickDangerColor),
-                color_btn("Success / Go", self.custom_colors.success, Message::PickSuccessColor),
+                text(&self.translations.theme_customizer.accents_and_status).size(18).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                color_btn(&self.translations.theme_customizer.primary_accent, self.custom_colors.primary, Message::PickPrimaryColor, lang_font),
+                color_btn(&self.translations.theme_customizer.danger_error, self.custom_colors.danger, Message::PickDangerColor, lang_font),
+                color_btn(&self.translations.theme_customizer.success_go, self.custom_colors.success, Message::PickSuccessColor, lang_font),
             ]
             .spacing(15)
             .width(Length::Fill)
@@ -1015,8 +1055,7 @@ impl CleanerApp {
 
         let color_columns = row![core_colors, accent_colors].spacing(20);
 
-        // --- LIVE PREVIEW BOX ---
-        let preview_header = container(text("Live Preview").size(16).style(style::title_color(&self.current_theme)))
+        let preview_header = container(text(&self.translations.theme_customizer.live_preview).size(16).style(active_colors.map_or_else(|| style::TITLE_COLOR, |c| c.text)).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(10)
             .style(iced::theme::Container::Custom(Box::new(style::PreviewBoxStyle {
                 bg: self.custom_colors.surface,
@@ -1025,19 +1064,19 @@ impl CleanerApp {
             .width(Length::Fill);
 
         let preview_content = column![
-            text("Sample Window Content").size(18).style(self.custom_colors.text),
-            text("This shows how your color choices look together.").size(14).style(self.custom_colors.text),
+            text(&self.translations.theme_customizer.sample_window_content).size(18).style(self.custom_colors.text).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+            text(&self.translations.theme_customizer.sample_description).size(14).style(self.custom_colors.text).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             row![
-                button(text("Primary Action").horizontal_alignment(iced::alignment::Horizontal::Center))
+                button(text(&self.translations.theme_customizer.primary_action).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
                     .width(Length::Fill)
                     .padding(10)
                     .style(iced::theme::Button::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.primary }))),
-                button(text("Danger Zone").horizontal_alignment(iced::alignment::Horizontal::Center))
+                button(text(&self.translations.theme_customizer.danger_zone).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
                     .width(Length::Fill)
                     .padding(10)
                     .style(iced::theme::Button::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.danger }))),
             ].spacing(10),
-            container(text("Success Message Received").style(Color::WHITE))
+            container(text(&self.translations.theme_customizer.success_message).style(Color::WHITE).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
                 .padding(10)
                 .width(Length::Fill)
                 .style(iced::theme::Container::Custom(Box::new(style::ColorPreviewStyle { color: self.custom_colors.success })))
@@ -1059,12 +1098,12 @@ impl CleanerApp {
         .padding(10);
 
         let main_col = column![
-            color_columns, 
+            color_columns,
             Space::with_height(Length::Fixed(20.0)),
-            text("Preview").size(18),
+            text(&self.translations.theme_customizer.preview).size(18).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             preview_container,
             Space::with_height(Length::Fixed(20.0)),
-            button(text("Apply Changes").size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+            button(text(&self.translations.theme_customizer.apply_changes).size(16).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
                     .padding(15)
                     .width(Length::Fill)
                     .on_press(Message::ApplyCustomTheme)
@@ -1073,7 +1112,7 @@ impl CleanerApp {
         .spacing(10)
         .width(Length::Fill);
 
-        let back_button = button(text("<- Back to Themes").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let back_button = button(text(&self.translations.theme_customizer.back_to_themes).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(10)
             .width(Length::Fixed(180.0))
             .on_press(Message::CloseCustomColors)
@@ -1103,36 +1142,38 @@ impl CleanerApp {
 
     fn view_custom_clean_window(&self) -> Element<'_, Message> {
         let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+        let lang_font = self.current_language.font();
 
-        fn make_checkbox<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
+        fn make_checkbox<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>, font: Option<iced::Font>) -> Element<'a, Message> {
             checkbox(label, value)
                 .on_toggle(msg)
                 .style(iced::theme::Checkbox::Custom(Box::new(style::CustomCheckboxStyle { custom_colors: colors })))
                 .width(Length::Fill)
                 .text_size(16)
+                .font(font.unwrap_or(iced::Font::DEFAULT))
                 .spacing(10)
                 .into()
         }
 
         let header = container(
-            text("Custom Cleaning Options").size(24).style(style::title_color(&self.current_theme))
+            text(&self.translations.custom_clean.title).size(24).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
         .padding(20)
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
         let col1 = column![
-            make_checkbox("Spoof System IDs", self.custom_clean_options.spoof_system_ids, Message::CustomCleanToggleSystemIds, active_colors),
-            make_checkbox("Spoof MAC Address", self.custom_clean_options.spoof_mac, Message::CustomCleanToggleMac, active_colors),
+            make_checkbox(&self.translations.custom_clean.spoof_system_ids, self.custom_clean_options.spoof_system_ids, Message::CustomCleanToggleSystemIds, active_colors, lang_font),
+            make_checkbox(&self.translations.custom_clean.spoof_mac_address, self.custom_clean_options.spoof_mac, Message::CustomCleanToggleMac, active_colors, lang_font),
         ].spacing(15).width(Length::FillPortion(1));
 
         let col2 = column![
-            make_checkbox("Spoof Volume ID", self.custom_clean_options.spoof_volume_id, Message::CustomCleanToggleVolumeId, active_colors),
-            make_checkbox("Clean Steam", self.custom_clean_options.clean_steam, Message::CustomCleanToggleSteam, active_colors),
+            make_checkbox(&self.translations.custom_clean.spoof_volume_id, self.custom_clean_options.spoof_volume_id, Message::CustomCleanToggleVolumeId, active_colors, lang_font),
+            make_checkbox(&self.translations.custom_clean.clean_steam, self.custom_clean_options.clean_steam, Message::CustomCleanToggleSteam, active_colors, lang_font),
         ].spacing(15).width(Length::FillPortion(1));
 
         let col3 = column![
-            make_checkbox("Aggressive Clean", self.custom_clean_options.clean_aggressive, Message::CustomCleanToggleAggressive, active_colors),
+            make_checkbox(&self.translations.custom_clean.aggressive_clean, self.custom_clean_options.clean_aggressive, Message::CustomCleanToggleAggressive, active_colors, lang_font),
         ].spacing(15).width(Length::FillPortion(1));
 
         let options_row = row![col1, col2, col3].spacing(20).width(Length::Fill);
@@ -1143,11 +1184,11 @@ impl CleanerApp {
         .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
         let (button_text_str, on_press_message) = match self.state {
-            State::Idle => ("Execute Custom Clean", Some(Message::ExecuteCustomClean)),
-            State::Cleaning => ("Cleaning in Progress...", None),
+            State::Idle => (&self.translations.custom_clean.execute_custom_clean, Some(Message::ExecuteCustomClean)),
+            State::Cleaning => (&self.translations.custom_clean.cleaning_in_progress, None),
         };
 
-        let mut execute_button = button(text(button_text_str).size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+        let mut execute_button = button(text(button_text_str).size(16).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
             .width(Length::Fill)
             .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
@@ -1157,7 +1198,7 @@ impl CleanerApp {
         }
 
         let back_button = button(
-            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+            text(&self.translations.custom_clean.back_to_main).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
         )
             .padding(10)
             .width(Length::Fixed(180.0))
