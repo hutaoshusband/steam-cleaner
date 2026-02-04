@@ -9,7 +9,7 @@ strip = true
 lto = true
 
 [dependencies]
-iced = { version = "0.12", features = ["tokio", "advanced", "multi-window"] }
+iced = { version = "0.12", features = ["tokio", "advanced", "multi-window", "svg"] }
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1.0", features = ["v4"] }
 rand = "0.8"

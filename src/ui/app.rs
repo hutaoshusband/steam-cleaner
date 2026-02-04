@@ -1,5 +1,5 @@
-use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, text, text_input, toggler, Column, Row, Space};
-use iced::{Application, Color, Command, Element, Length, Subscription, Theme, time};
+use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Column, Row, Space};
+use iced::{Application, Color, Command, Element, Length, Subscription, Theme, time, alignment::Horizontal};
 use std::time::Duration;
 use tinyfiledialogs as tfd;
 
@@ -34,6 +34,7 @@ pub struct CleanerApp {
     rainbow_hue: f32,
     current_language: Language,
     translations: Translations,
+    language_selector_open: bool,
 }
 
 #[derive(Default)]
@@ -104,6 +105,8 @@ pub enum Message {
     CustomCleanToggleAggressive(bool),
     ExecuteCustomClean,
     ChangeLanguage(Language),
+    OpenLanguageSelector,
+    CloseLanguageSelector,
     RainbowTick(std::time::Instant),
 }
 
@@ -146,6 +149,7 @@ impl Application for CleanerApp {
                 rainbow_hue: 0.0,
                 current_language,
                 translations,
+                language_selector_open: false,
             },
             Command::none(),
         )
@@ -510,6 +514,14 @@ impl Application for CleanerApp {
                 self.translations = i18n::load_translations(lang);
                 Command::none()
             }
+            Message::OpenLanguageSelector => {
+                self.language_selector_open = true;
+                Command::none()
+            }
+            Message::CloseLanguageSelector => {
+                self.language_selector_open = false;
+                Command::none()
+            }
             Message::RainbowTick(_) => {
                 self.rainbow_hue += 0.005;
                 if self.rainbow_hue > 1.0 {
@@ -639,14 +651,31 @@ impl CleanerApp {
 
         let dry_run_toggle = make_toggler(&self.translations.main_window.simulation_mode_dry_run, self.options.dry_run, Message::ToggleDryRun, active_colors, lang_font);
 
-        let language_picker = pick_list(
-            Language::all(),
-            Some(self.current_language),
-            Message::ChangeLanguage,
+        // Language button - show current language with globe icon
+        let lang_code = self.current_language.name();
+        
+        // Simple inline SVG for language icon - using white with dark outline for visibility
+        let lang_svg = r#"<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" fill="white" stroke="black" stroke-width="1.5"/>
+            <ellipse cx="12" cy="12" rx="9" ry="2.5" fill="none" stroke="black" stroke-width="1.2"/>
+            <path d="M3 12 L21 12" stroke="black" stroke-width="1.2"/>
+            <path d="M12 3 L12 21" stroke="black" stroke-width="1.2"/>
+        </svg>"#;
+        
+        let lang_icon = svg::Handle::from_memory(lang_svg.as_bytes());
+
+        let language_button = button(
+            row![
+                svg(lang_icon)
+                    .width(Length::Fixed(24.0))
+                    .height(Length::Fixed(24.0)),
+                text(lang_code).size(13).font(lang_font.unwrap_or(iced::Font::DEFAULT))
+            ].spacing(6).align_items(iced::Alignment::Center)
         )
-        .width(Length::Fill)
-        .text_size(14)
-        .font(lang_font.unwrap_or(iced::Font::DEFAULT));
+        .on_press(Message::OpenLanguageSelector)
+        .padding(8)
+        .width(Length::Shrink)
+        .style(iced::theme::Button::Custom(Box::new(style::IconButtonStyle { custom_colors: active_colors })));
 
         let custom_clean_button = button(text(&self.translations.main_window.custom_clean).size(14).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
             .padding(15)
@@ -659,11 +688,6 @@ impl CleanerApp {
             Space::with_height(Length::Fixed(5.0)),
             container(dry_run_toggle)
                 .padding(12)
-                .width(Length::Fill)
-                .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
-            Space::with_height(Length::Fixed(5.0)),
-            container(language_picker)
-                .padding([8, 12])
                 .width(Length::Fill)
                 .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
             Space::with_height(Length::Fixed(5.0)),
@@ -698,8 +722,15 @@ impl CleanerApp {
             .width(Length::Fill)
             .height(Length::Fill);
 
+        // Header row with title and language button
+        let log_header = row![
+            text(&self.translations.main_window.verbose_log_output).size(16).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+            Space::with_width(Length::Fill),
+            language_button,
+        ].align_items(iced::Alignment::Center);
+
         let right_panel = Column::new()
-            .push(text(&self.translations.main_window.verbose_log_output).size(16).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)))
+            .push(log_header)
             .push(Space::with_height(Length::Fixed(10.0)))
             .push(console_box)
             .width(Length::FillPortion(7))
@@ -711,12 +742,88 @@ impl CleanerApp {
             .push(right_panel)
             .height(Length::Fill);
 
-        container(main_content)
+        let main_container = container(main_content)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(10)
-            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
-            .into()
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })));
+
+        if self.language_selector_open {
+            // Language selector overlay
+            let language_buttons: Column<'_, Message> = Language::all().iter().fold(
+                Column::new().spacing(8),
+                |col, &lang| {
+                    let font = lang.font();
+                    let is_selected = self.current_language == lang;
+                    let mut label = text(lang.name())
+                        .size(14)
+                        .horizontal_alignment(Horizontal::Center)
+                        .style(Color::WHITE);
+                    
+                    if let Some(f) = font {
+                        label = label.font(f);
+                    }
+                    let btn = button(label)
+                        .on_press(Message::ChangeLanguage(lang))
+                        .padding(5)
+                        .width(Length::Fill)
+                        .height(Length::Shrink)
+                        .style(iced::theme::Button::Custom(Box::new(style::LanguageButtonStyle { 
+                            custom_colors: active_colors,
+                            is_selected 
+                        })));
+                    col.push(btn)
+                }
+            );
+
+            let close_button_text_color = if let Some(colors) = active_colors {
+                colors.background
+            } else {
+                match self.current_theme {
+                    iced::Theme::Light | iced::Theme::SolarizedLight => Color::BLACK,
+                    _ => Color::WHITE,
+                }
+            };
+            
+            let overlay_content = column![
+                text("Select Language").size(18).horizontal_alignment(Horizontal::Center).style(style::title_color(&self.current_theme)),
+                Space::with_height(Length::Fixed(12.0)),
+                language_buttons,
+                Space::with_height(Length::Fixed(12.0)),
+                button(text("Close").size(14).horizontal_alignment(Horizontal::Center).style(close_button_text_color))
+                    .on_press(Message::CloseLanguageSelector)
+                    .padding(10)
+                    .width(Length::Fill)
+                    .height(Length::Fixed(40.0))
+                    .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })))
+            ]
+            .align_items(iced::Alignment::Center)
+            .spacing(0);
+
+            let overlay = container(overlay_content)
+                .width(Length::Fixed(350.0))
+                .padding(20)
+                .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
+
+            // Center the overlay
+            let centered = row![
+                Space::with_width(Length::Fill),
+                column![
+                    Space::with_height(Length::Fill),
+                    overlay,
+                    Space::with_height(Length::Fill),
+                ],
+                Space::with_width(Length::Fill),
+            ];
+
+            container(centered)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(iced::theme::Container::Custom(Box::new(style::ModalOverlayStyle { custom_colors: active_colors })))
+                .into()
+        } else {
+            main_container.into()
+        }
     }
 
     fn view_inspector_window(&self) -> Element<'_, Message> {
