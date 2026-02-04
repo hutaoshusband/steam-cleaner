@@ -48,12 +48,8 @@ pub fn scan_redistributables(libraries: &[PathBuf], active_categories: &[RedistC
                     continue;
                 }
 
-                // Recursively search game directory (max depth 5 to avoid infinite loops or deep structures)
+                // we limit recurse to 5
                 let walker = WalkDir::new(&game_path).max_depth(5).into_iter();
-                
-                // We collect matches to avoid modifying the walker during iteration or dealing with ownership issues
-                // Also, we want to avoid adding subdirectories of already matched directories.
-                // But simplified approach first: find all candidates.
                 
                 for entry in walker.filter_map(|e| e.ok()) {
                     if !entry.file_type().is_dir() {
@@ -79,8 +75,6 @@ pub fn scan_redistributables(libraries: &[PathBuf], active_categories: &[RedistC
 
                     if let Some(cat) = category {
                         if active_categories.contains(&cat) {
-                            // Check if this path is already covered by a parent path in results
-                            // This is a simple optimization to avoid listing subfolders of a folder we are already deleting.
                             let already_covered = results.iter().any(|item: &RedistItem| path.starts_with(&item.path) && path != item.path);
                             
                             if !already_covered {
@@ -124,8 +118,6 @@ pub fn clean_redistributables(items: &[RedistItem], dry_run: bool) -> Vec<String
         if dry_run {
             logs.push(format!("[Dry Run] Would delete directory: {} ({})", item.path.display(), format_size(item.size)));
         } else {
-            // Check if path exists before trying to delete (it might have been deleted if it was nested in another deleted folder, 
-            // though our scan logic tries to prevent that)
             if item.path.exists() {
                 match fs::remove_dir_all(&item.path) {
                     Ok(_) => logs.push(format!("Deleted: {} ({})", item.path.display(), format_size(item.size))),

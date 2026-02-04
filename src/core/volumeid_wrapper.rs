@@ -60,8 +60,6 @@ fn generate_random_volume_id() -> String {
 
 fn accept_volumeid_eula() -> io::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    // The key path is "Software\Sysinternals\VolumeId"
-    // We need to create the subkey "Software\Sysinternals" first
     let sysinternals_path = "Software\\Sysinternals";
     let (sysinternals_key, _) = hkcu.create_subkey(sysinternals_path)?;
     let (key, _) = sysinternals_key.create_subkey("VolumeId")?;
@@ -69,7 +67,6 @@ fn accept_volumeid_eula() -> io::Result<()> {
     Ok(())
 }
 
-/// Wendet eine spezifische Volume ID aus einem Profil an
 pub fn change_volume_id_to_specific(drive_letter: &str, volume_id: &str, dry_run: bool) -> io::Result<String> {
     if dry_run {
         return Ok(format!("[Volume ID] Would change Volume ID of {} to {}", drive_letter, volume_id));

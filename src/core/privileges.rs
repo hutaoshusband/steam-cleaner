@@ -16,7 +16,7 @@ pub fn is_elevated() -> bool {
     stdout.contains("S-1-16-12288")
 }
 
-/// Zeigt eine native Windows-Fehlermeldung an.
+/// Shows a native Windows error message.
 pub fn show_admin_error_dialog() {
      let exe = env::current_exe().unwrap();
     let args: String = env::args().skip(1).collect::<Vec<_>>().join(" ");

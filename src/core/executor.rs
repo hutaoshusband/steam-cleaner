@@ -102,7 +102,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     results
 }
 
-/// Wendet ein Hardware-Profil an (MAC-Adressen, Volume IDs)
+/// Applies a hardware profile (MAC addresses, Volume IDs)
 pub async fn apply_hardware_profile(
     profile: crate::core::hardware_profile::HardwareProfile,
     dry_run: bool,
@@ -119,7 +119,7 @@ pub async fn apply_hardware_profile(
     // Run blocking operations in parallel
     let mut tasks = Vec::new();
 
-    // MAC-Adressen anwenden
+    // Apply MAC addresses
     if !profile.mac_addresses.is_empty() {
         results.push(format!("[*] Applying {} MAC address(es)...", profile.mac_addresses.len()));
         let mac_addresses = profile.mac_addresses.clone();
@@ -133,7 +133,7 @@ pub async fn apply_hardware_profile(
         results.push("[!] No MAC addresses in profile.".to_string());
     }
 
-    // Volume IDs anwenden
+    // Apply Volume IDs
     if !profile.volume_ids.is_empty() {
         results.push(format!("[*] Applying {} Volume ID(s)...", profile.volume_ids.len()));
         let volume_ids = profile.volume_ids.clone();

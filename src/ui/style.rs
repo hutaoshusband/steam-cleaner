@@ -191,7 +191,9 @@ pub struct OptionsBoxStyle {
 
 impl Default for OptionsBoxStyle {
     fn default() -> Self {
-        Self { custom_colors: None }
+        Self {
+            custom_colors: None,
+        }
     }
 }
 
@@ -368,7 +370,7 @@ impl button::StyleSheet for PrimaryButtonStyle {
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
         if let Some(_) = &self.custom_colors {
-             return button::Appearance {
+            return button::Appearance {
                 shadow: iced::Shadow {
                     color: Color::BLACK,
                     offset: Vector::new(0.0, 2.0),
@@ -415,8 +417,10 @@ impl button::StyleSheet for PrimaryButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
-        if self.custom_colors.is_some() { return active; }
-        
+        if self.custom_colors.is_some() {
+            return active;
+        }
+
         match style {
             iced::Theme::Light => button::Appearance {
                 background: Some(Color::from_rgb(0.1, 0.4, 0.8).into()),
@@ -524,7 +528,9 @@ impl button::StyleSheet for SuccessButtonStyle {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
-        if self.custom_colors.is_some() { return active; }
+        if self.custom_colors.is_some() {
+            return active;
+        }
 
         match style {
             iced::Theme::Light => button::Appearance {
@@ -563,7 +569,9 @@ impl button::StyleSheet for SuccessButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
-        if self.custom_colors.is_some() { return active; }
+        if self.custom_colors.is_some() {
+            return active;
+        }
 
         match style {
             iced::Theme::Light
@@ -596,7 +604,7 @@ impl button::StyleSheet for DangerButtonStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style) -> button::Appearance {
         if let Some(colors) = &self.custom_colors {
-             return button::Appearance {
+            return button::Appearance {
                 background: Some(colors.danger.into()),
                 border: border::Border {
                     radius: 6.0.into(),
@@ -664,7 +672,9 @@ impl button::StyleSheet for DangerButtonStyle {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
-        if self.custom_colors.is_some() { return active; }
+        if self.custom_colors.is_some() {
+            return active;
+        }
 
         match style {
             iced::Theme::Light => button::Appearance {
@@ -703,7 +713,9 @@ impl button::StyleSheet for DangerButtonStyle {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         let active = self.active(style);
-        if self.custom_colors.is_some() { return active; }
+        if self.custom_colors.is_some() {
+            return active;
+        }
 
         match style {
             iced::Theme::Light
@@ -736,7 +748,7 @@ impl toggler::StyleSheet for CustomTogglerStyle {
     type Style = iced::Theme;
     fn active(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
         if let Some(colors) = &self.custom_colors {
-             return toggler::Appearance {
+            return toggler::Appearance {
                 background: if is_active {
                     colors.primary
                 } else {
@@ -884,7 +896,7 @@ impl container::StyleSheet for ConsoleContainerStyle {
     type Style = iced::Theme;
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
         if let Some(colors) = &self.custom_colors {
-             return container::Appearance {
+            return container::Appearance {
                 background: Some(colors.background.into()),
                 border: border::Border {
                     color: colors.primary,
@@ -967,31 +979,77 @@ impl button::StyleSheet for ThemedButtonStyle {
 
     fn active(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.active(style),
-            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.active(style),
-            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.active(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle {
+                custom_colors: *colors,
+            }
+            .active(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle {
+                custom_colors: *colors,
+            }
+            .active(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle {
+                custom_colors: *colors,
+            }
+            .active(style),
         }
     }
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.hovered(style),
-            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.hovered(style),
-            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.hovered(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle {
+                custom_colors: *colors,
+            }
+            .hovered(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle {
+                custom_colors: *colors,
+            }
+            .hovered(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle {
+                custom_colors: *colors,
+            }
+            .hovered(style),
         }
     }
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         match self {
-            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle { custom_colors: *colors }.pressed(style),
-            ThemedButtonStyle::Success(colors) => SuccessButtonStyle { custom_colors: *colors }.pressed(style),
-            ThemedButtonStyle::Danger(colors) => DangerButtonStyle { custom_colors: *colors }.pressed(style),
+            ThemedButtonStyle::Primary(colors) => PrimaryButtonStyle {
+                custom_colors: *colors,
+            }
+            .pressed(style),
+            ThemedButtonStyle::Success(colors) => SuccessButtonStyle {
+                custom_colors: *colors,
+            }
+            .pressed(style),
+            ThemedButtonStyle::Danger(colors) => DangerButtonStyle {
+                custom_colors: *colors,
+            }
+            .pressed(style),
         }
     }
 }
 
 pub struct CustomCheckboxStyle {
-     pub custom_colors: Option<CustomThemeColors>,
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
+pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Color {
+    let i = (h * 6.0).floor() as i32;
+    let f = h * 6.0 - i as f32;
+    let p = v * (1.0 - s);
+    let q = v * (1.0 - f * s);
+    let t = v * (1.0 - (1.0 - f) * s);
+
+    let (r, g, b) = match i % 6 {
+        0 => (v, t, p),
+        1 => (q, v, p),
+        2 => (p, v, t),
+        3 => (p, q, v),
+        4 => (t, p, v),
+        _ => (v, p, q),
+    };
+
+    Color::from_rgb(r, g, b)
 }
 
 pub struct ColorPreviewStyle {
@@ -1243,6 +1301,269 @@ impl checkbox::StyleSheet for CustomCheckboxStyle {
                     radius: 1.0.into(),
                 },
                 text_color: Some(TEXT),
+            },
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct RainbowButtonStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+    pub hue: f32,
+}
+
+impl button::StyleSheet for RainbowButtonStyle {
+    type Style = iced::Theme;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            let rainbow_color = hsv_to_rgb(self.hue, 0.8, 1.0);
+            return button::Appearance {
+                background: Some(colors.success.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 6.0.into(),
+                },
+                text_color: colors.background,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.6),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            };
+        }
+
+        let rainbow_color = hsv_to_rgb(self.hue, 0.8, 1.0);
+
+        // Textfarbe basierend auf Theme bestimmen
+        let text_color = match style {
+            iced::Theme::Light | iced::Theme::SolarizedLight | iced::Theme::Nord => Color::WHITE,
+            _ => GHOST_WHITE, // Für Dark/Dracula/RedRetro
+        };
+
+        match style {
+            iced::Theme::Light => button::Appearance {
+                background: Some(LIGHT_SUCCESS.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.4),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            },
+            iced::Theme::Dracula => button::Appearance {
+                background: Some(DARK_SUCCESS.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.5),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(NORD_SUCCESS.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.5),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(CREAM_SUCCESS.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.4),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            },
+            _ => button::Appearance {
+                background: Some(ACCENT_GREEN.into()),
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 2.0.into(),
+                },
+                text_color, // Hier die dynamische Textfarbe nutzen
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.7),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 15.0,
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        let rainbow_color = hsv_to_rgb(self.hue, 0.8, 1.0);
+
+        if self.custom_colors.is_some() {
+            return button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(
+                        rainbow_color.r,
+                        rainbow_color.g,
+                        rainbow_color.b,
+                        0.85,
+                    ),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 30.0, // Weicherer Glow (war 20.0)
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 6.0.into(),
+                },
+                ..active
+            };
+        }
+
+        match style {
+            iced::Theme::Light => button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.6),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 25.0, // Weicherer Glow
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 6.0.into(),
+                },
+                ..active
+            },
+            iced::Theme::Dracula => button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(
+                        rainbow_color.r,
+                        rainbow_color.g,
+                        rainbow_color.b,
+                        0.75,
+                    ),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 30.0, // Weicherer Glow
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 6.0.into(),
+                },
+                ..active
+            },
+            iced::Theme::Nord => button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.7),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 30.0, // Weicherer Glow
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 6.0.into(),
+                },
+                ..active
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.6),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 25.0, // Weicherer Glow
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 6.0.into(),
+                },
+                ..active
+            },
+            _ => button::Appearance {
+                background: Some(Color::from_rgb(0.2, 0.75, 0.28).into()),
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.9),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 35.0, // Weicherer Glow (war 22.0)
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 4.0,
+                    radius: 2.0.into(),
+                },
+                text_color: GHOST_WHITE, // Red Style -> Weißer Text
+                ..Default::default()
+            },
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        let rainbow_color = hsv_to_rgb(self.hue, 0.8, 1.0);
+
+        if self.custom_colors.is_some() {
+            return button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.5),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 8.0,
+                },
+                ..active
+            };
+        }
+
+        match style {
+            iced::Theme::Light
+            | iced::Theme::Dracula
+            | iced::Theme::Nord
+            | iced::Theme::SolarizedLight => button::Appearance {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.4),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 8.0,
+                },
+                ..active
+            },
+            _ => button::Appearance {
+                background: Some(Color::from_rgb(0.12, 0.5, 0.15).into()),
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(rainbow_color.r, rainbow_color.g, rainbow_color.b, 0.6),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 10.0,
+                },
+                border: border::Border {
+                    color: rainbow_color,
+                    width: 3.0,
+                    radius: 2.0.into(),
+                },
+                text_color: GHOST_WHITE,
+                ..Default::default()
             },
         }
     }

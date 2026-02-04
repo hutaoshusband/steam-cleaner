@@ -1,5 +1,6 @@
-use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input, toggler, Column, Row, Space};
-use iced::{border, Application, Color, Command, Element, Length, Theme};
+use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, text, text_input, toggler, Column, Row, Space};
+use iced::{Application, Color, Command, Element, Length, Subscription, Theme, time};
+use std::time::Duration;
 use tinyfiledialogs as tfd;
 
 use crate::core::backup;
@@ -27,6 +28,9 @@ pub struct CleanerApp {
     custom_colors_open: bool,
     custom_colors: style::CustomThemeColors,
     custom_theme_active: bool,
+    custom_clean_open: bool,
+    custom_clean_options: CleaningOptions,
+    rainbow_hue: f32,
 }
 
 #[derive(Default)]
@@ -88,6 +92,15 @@ pub enum Message {
     PickDangerColor,
     PickSuccessColor,
     ApplyCustomTheme,
+    OpenCustomClean,
+    CloseCustomClean,
+    CustomCleanToggleSystemIds(bool),
+    CustomCleanToggleMac(bool),
+    CustomCleanToggleVolumeId(bool),
+    CustomCleanToggleSteam(bool),
+    CustomCleanToggleAggressive(bool),
+    ExecuteCustomClean,
+    RainbowTick(std::time::Instant),
 }
 
 impl Application for CleanerApp {
@@ -121,7 +134,10 @@ impl Application for CleanerApp {
                 current_theme: Theme::Dark,
                 custom_colors_open: false,
                 custom_colors: style::CustomThemeColors::load().unwrap_or_default(),
-                custom_theme_active: style::CustomThemeColors::load().is_some(),
+                custom_theme_active: false,
+                custom_clean_open: false,
+                custom_clean_options: CleaningOptions::default(),
+                rainbow_hue: 0.0,
             },
             Command::none(),
         )
@@ -430,7 +446,69 @@ impl Application for CleanerApp {
                 let _ = self.custom_colors.save();
                 Command::none()
             }
+            Message::OpenCustomClean => {
+                self.custom_clean_open = true;
+                Command::none()
+            }
+            Message::CloseCustomClean => {
+                self.custom_clean_open = false;
+                Command::none()
+            }
+            Message::CustomCleanToggleSystemIds(value) => {
+                self.custom_clean_options.spoof_system_ids = value;
+                Command::none()
+            }
+            Message::CustomCleanToggleMac(value) => {
+                self.custom_clean_options.spoof_mac = value;
+                Command::none()
+            }
+            Message::CustomCleanToggleVolumeId(value) => {
+                self.custom_clean_options.spoof_volume_id = value;
+                Command::none()
+            }
+            Message::CustomCleanToggleSteam(value) => {
+                self.custom_clean_options.clean_steam = value;
+                Command::none()
+            }
+            Message::CustomCleanToggleAggressive(value) => {
+                self.custom_clean_options.clean_aggressive = value;
+                Command::none()
+            }
+            Message::ExecuteCustomClean => {
+                if self.state == State::Idle {
+                    if self.custom_clean_options.clean_aggressive {
+                        let confirmation = tfd::message_box_yes_no(
+                            "Aggressive Cleaning Warning",
+                            "Aggressive cleaning can have unintended side effects. Are you sure you want to continue?",
+                            tfd::MessageBoxIcon::Warning,
+                            tfd::YesNo::No,
+                        );
+                        if confirmation == tfd::YesNo::No {
+                            self.log_messages.push("Aggressive cleaning cancelled.".to_string());
+                            return Command::none();
+                        }
+                    }
+
+                    self.state = State::Cleaning;
+                    self.log_messages = vec!["[*] Starting custom cleaning...".to_string()];
+                    let options = self.custom_clean_options;
+                    Command::perform(run_all_selected(options), Message::CleaningFinished)
+                } else {
+                    Command::none()
+                }
+            }
+            Message::RainbowTick(_) => {
+                self.rainbow_hue += 0.005;
+                if self.rainbow_hue > 1.0 {
+                    self.rainbow_hue = 0.0;
+                }
+                Command::none()
+            }
         }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        time::every(Duration::from_millis(16)).map(Message::RainbowTick)
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -443,6 +521,8 @@ impl Application for CleanerApp {
                 None
             };
             redist_view::view(&self.redist_state, active_colors).map(Message::Redist)
+        } else if self.custom_clean_open {
+            self.view_custom_clean_window()
         } else if self.custom_colors_open {
             self.view_custom_colors()
         } else if self.theme_open {
@@ -470,65 +550,62 @@ impl CleanerApp {
         }
 
         let system_spoofing_options = column![
-            text("System-Spoofing").size(16).style(style::title_color(&self.current_theme)),
+            text("System Spoofing").size(15).style(style::title_color(&self.current_theme)),
             make_toggler("Spoof System IDs", self.options.spoof_system_ids, Message::ToggleSystemIds, active_colors),
             make_toggler("Spoof MAC Address", self.options.spoof_mac, Message::ToggleMac, active_colors),
             make_toggler("Spoof Volume ID", self.options.spoof_volume_id, Message::ToggleVolumeId, active_colors),
         ]
-        .spacing(10)
-        .padding(12);
+        .spacing(6);
 
         let steam_cleaning_options = column![
-            text("Steam-Reinigung").size(16).style(style::title_color(&self.current_theme)),
+            text("Steam Cleaning").size(15).style(style::title_color(&self.current_theme)),
             make_toggler("Clean Steam", self.options.clean_steam, Message::ToggleSteam, active_colors),
         ]
-        .spacing(10)
-        .padding(12);
+        .spacing(6);
 
         let aggressive_cleaning_options = column![
-            text("Aggressive Reinigung").size(16).style(style::title_color(&self.current_theme)),
+            text("Aggressive Cleaning").size(15).style(style::title_color(&self.current_theme)),
             make_toggler("Aggressive Clean", self.options.clean_aggressive, Message::ToggleAggressive, active_colors),
         ]
-        .spacing(10)
-        .padding(12);
+        .spacing(6);
 
         let options_content = column![
             system_spoofing_options,
             steam_cleaning_options,
             aggressive_cleaning_options
         ]
-        .spacing(8);
+        .spacing(10);
 
         let options_box = container(options_content)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })))
-            .padding(10)
+            .padding(12)
             .width(Length::Fill);
 
-        let inspector_button = button(text("Inspector & Profiles").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(12)
+        let inspector_button = button(text("Inspector & Profiles").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenInspector)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let redist_button = button(text("Steam Redist Cleaner (Beta)").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(12)
+        let redist_button = button(text("Steam Redist Cleaner (Beta)").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenRedist)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
-        let themes_button = button(text("Themes & Appearance").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(12)
+        let themes_button = button(text("Themes & Appearance").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenThemes)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let (button_text_str, on_press_message) = match self.state {
             State::Idle => ("Execute Cleaning", Some(Message::Execute)),
-            State::Cleaning => ("Cleaning in Progress...", None),
+            State::Cleaning => ("Cleaning...", None),
         };
 
         let mut execute_button = button(text(button_text_str).size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(12)
+            .padding(16)
             .width(Length::Fill)
             .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
 
@@ -536,37 +613,48 @@ impl CleanerApp {
             execute_button = execute_button.on_press(msg);
         }
 
-        let backup_button = button(text("Backup Steam Data").size(15).horizontal_alignment(iced::alignment::Horizontal::Center))
-            .padding(12)
+        let backup_button = button(text("Backup Steam Data").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
             .width(Length::Fill)
             .on_press(Message::Backup)
             .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let dry_run_toggle = make_toggler("Simulation Mode (Dry Run)", self.options.dry_run, Message::ToggleDryRun, active_colors);
 
+        let custom_clean_button = button(text("Custom Clean").size(14).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
+            .width(Length::Fill)
+            .on_press(Message::OpenCustomClean)
+            .style(iced::theme::Button::Custom(Box::new(style::RainbowButtonStyle { custom_colors: active_colors, hue: self.rainbow_hue })));
+
         let left_panel_content = column![
             options_box,
-            Space::with_height(Length::Fixed(15.0)),
-            container(dry_run_toggle).padding(10).style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
-            Space::with_height(Length::Fixed(15.0)),
+            Space::with_height(Length::Fixed(5.0)),
+            container(dry_run_toggle)
+                .padding(12)
+                .width(Length::Fill)
+                .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
+            Space::with_height(Length::Fixed(5.0)),
             execute_button,
-            Space::with_height(Length::Fixed(8.0)),
+            Space::with_height(Length::Fixed(4.0)),
+            custom_clean_button,
+            Space::with_height(Length::Fixed(4.0)),
             backup_button,
-            Space::with_height(Length::Fixed(8.0)),
+            Space::with_height(Length::Fixed(4.0)),
             inspector_button,
-            Space::with_height(Length::Fixed(8.0)),
+            Space::with_height(Length::Fixed(4.0)),
             redist_button,
-            Space::with_height(Length::Fixed(8.0)),
+            Space::with_height(Length::Fixed(4.0)),
             themes_button,
-            Space::with_height(Length::Fixed(20.0)),
+            Space::with_height(Length::Fixed(5.0)),
         ]
-        .spacing(8)
+        .spacing(4)
         .width(Length::Fill);
 
-        let left_panel = container(scrollable(left_panel_content))
+        let left_panel = container(left_panel_content)
             .width(Length::FillPortion(1))
             .height(Length::Fill)
-            .padding(15);
+            .padding(12);
 
         let log_output = self.log_messages.iter().fold(Column::new().spacing(4), |col, msg| {
             col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(13))
@@ -594,7 +682,7 @@ impl CleanerApp {
         container(main_content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(20)
+            .padding(10)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
             .into()
     }
@@ -639,7 +727,7 @@ impl CleanerApp {
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
 
-        let profile_header = text("Hardware-ID Profile Manager").size(18).style(style::title_color(&self.current_theme));
+        let profile_header = text("Hardware ID Profile Manager").size(18).style(style::title_color(&self.current_theme));
 
         let profile_dropdown: Element<'_, Message> = pick_list(
             self.profile_state.profile_names.clone(),
@@ -815,8 +903,8 @@ impl CleanerApp {
             text("Select Application Theme:").size(18).style(style::title_color(&self.current_theme)),
             Space::with_height(Length::Fixed(15.0)),
             theme_btn("Red Retro (Default)", Theme::Dark, &self.current_theme, active_colors),
-            theme_btn("White Mode (Light)", Theme::Light, &self.current_theme, active_colors),
-            theme_btn("Pure Dark (Neutral)", Theme::Dracula, &self.current_theme, active_colors),
+            theme_btn("Light Mode", Theme::Light, &self.current_theme, active_colors),
+            theme_btn("Neutral Dark", Theme::Dracula, &self.current_theme, active_colors),
             theme_btn("Ultra Dark", Theme::Nord, &self.current_theme, active_colors),
             theme_btn("Cream", Theme::SolarizedLight, &self.current_theme, active_colors),
             Space::with_height(Length::Fixed(20.0)),
@@ -895,6 +983,8 @@ impl CleanerApp {
             .into()
         };
 
+        let active_colors = Some(self.custom_colors);
+
         let core_colors = container(
             column![
                 text("Core Layout").size(18),
@@ -906,7 +996,7 @@ impl CleanerApp {
             .width(Length::Fill)
         )
         .padding(20)
-        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle::default())))
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })))
         .width(Length::FillPortion(1));
 
         let accent_colors = container(
@@ -920,7 +1010,7 @@ impl CleanerApp {
             .width(Length::Fill)
         )
         .padding(20)
-        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle::default())))
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })))
         .width(Length::FillPortion(1));
 
         let color_columns = row![core_colors, accent_colors].spacing(20);
@@ -1008,6 +1098,99 @@ impl CleanerApp {
             .height(Length::Fill)
             .padding(20)
             .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle::default())))
+            .into()
+    }
+
+    fn view_custom_clean_window(&self) -> Element<'_, Message> {
+        let active_colors = if self.custom_theme_active { Some(self.custom_colors) } else { None };
+
+        fn make_checkbox<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>) -> Element<'a, Message> {
+            checkbox(label, value)
+                .on_toggle(msg)
+                .style(iced::theme::Checkbox::Custom(Box::new(style::CustomCheckboxStyle { custom_colors: colors })))
+                .width(Length::Fill)
+                .text_size(16)
+                .spacing(10)
+                .into()
+        }
+
+        let header = container(
+            text("Custom Cleaning Options").size(24).style(style::title_color(&self.current_theme))
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .align_y(iced::alignment::Vertical::Center);
+
+        let col1 = column![
+            make_checkbox("Spoof System IDs", self.custom_clean_options.spoof_system_ids, Message::CustomCleanToggleSystemIds, active_colors),
+            make_checkbox("Spoof MAC Address", self.custom_clean_options.spoof_mac, Message::CustomCleanToggleMac, active_colors),
+        ].spacing(15).width(Length::FillPortion(1));
+
+        let col2 = column![
+            make_checkbox("Spoof Volume ID", self.custom_clean_options.spoof_volume_id, Message::CustomCleanToggleVolumeId, active_colors),
+            make_checkbox("Clean Steam", self.custom_clean_options.clean_steam, Message::CustomCleanToggleSteam, active_colors),
+        ].spacing(15).width(Length::FillPortion(1));
+
+        let col3 = column![
+            make_checkbox("Aggressive Clean", self.custom_clean_options.clean_aggressive, Message::CustomCleanToggleAggressive, active_colors),
+        ].spacing(15).width(Length::FillPortion(1));
+
+        let options_row = row![col1, col2, col3].spacing(20).width(Length::Fill);
+
+        let options_container = container(options_row)
+        .padding(20)
+        .width(Length::Fill)
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
+
+        let (button_text_str, on_press_message) = match self.state {
+            State::Idle => ("Execute Custom Clean", Some(Message::ExecuteCustomClean)),
+            State::Cleaning => ("Cleaning in Progress...", None),
+        };
+
+        let mut execute_button = button(text(button_text_str).size(16).horizontal_alignment(iced::alignment::Horizontal::Center))
+            .padding(15)
+            .width(Length::Fill)
+            .style(iced::theme::Button::Custom(Box::new(style::SuccessButtonStyle { custom_colors: active_colors })));
+
+        if let Some(msg) = on_press_message {
+            execute_button = execute_button.on_press(msg);
+        }
+
+        let back_button = button(
+            text("<- Back to Main").size(14).horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+            .padding(10)
+            .width(Length::Fixed(180.0))
+            .on_press(Message::CloseCustomClean)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
+
+        let main_content = column![
+            header,
+            Space::with_height(Length::Fixed(15.0)),
+            container(
+                scrollable(
+                    column![
+                        options_container,
+                        Space::with_height(Length::Fixed(20.0)),
+                        execute_button,
+                        Space::with_height(Length::Fixed(15.0)),
+                        container(back_button).center_x().width(Length::Fill),
+                    ]
+                    .width(Length::Fill)
+                )
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20),
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        container(main_content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .style(iced::theme::Container::Custom(Box::new(style::MainWindowStyle { custom_colors: active_colors })))
             .into()
     }
 }

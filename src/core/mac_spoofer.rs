@@ -95,8 +95,8 @@ pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
     Ok(logs)
 }
 
-/// Wendet spezifische MAC-Adressen aus einem Profil an
-/// adapter_macs: HashMap von Adapter-Key (z.B. "0001") zu MAC (z.B. "AABBCCDDEEFF")
+/// Applies specific MAC addresses from a profile
+/// adapter_macs: HashMap from adapter key (e.g. "0001") to MAC (e.g. "AABBCCDDEEFF")
 pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, String>, dry_run: bool) -> std::io::Result<Vec<String>> {
     let mut logs = Vec::new();
     

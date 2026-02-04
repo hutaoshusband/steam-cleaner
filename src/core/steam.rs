@@ -26,7 +26,6 @@ pub fn get_steam_root() -> Option<PathBuf> {
 pub fn get_library_folders(steam_root: &Path) -> Vec<PathBuf> {
     let mut libraries = Vec::new();
     
-    // Always add the main steamapps folder
     let main_lib = steam_root.join("steamapps");
     if main_lib.exists() {
         libraries.push(main_lib.clone());
@@ -35,9 +34,6 @@ pub fn get_library_folders(steam_root: &Path) -> Vec<PathBuf> {
     let vdf_path = main_lib.join("libraryfolders.vdf");
     if vdf_path.exists() {
         if let Ok(content) = fs::read_to_string(vdf_path) {
-            // Regex to match "path" "..."
-            // We use a relatively simple regex. VDF files can contain comments, but usually libraryfolders.vdf is clean.
-            // Using regex to capture the path value.
             if let Ok(re) = regex::Regex::new(r#"(?i)"path"\s+"([^"]+)""#) {
                 for cap in re.captures_iter(&content) {
                     if let Some(path_match) = cap.get(1) {
@@ -53,7 +49,6 @@ pub fn get_library_folders(steam_root: &Path) -> Vec<PathBuf> {
         }
     }
     
-    // Deduplicate
     libraries.sort();
     libraries.dedup();
     
