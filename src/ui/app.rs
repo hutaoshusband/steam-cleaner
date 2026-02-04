@@ -863,6 +863,18 @@ impl CleanerApp {
 
         let dry_run_toggle = make_toggler(&self.translations.main_window.simulation_mode_dry_run, self.options.dry_run, Message::ToggleDryRun, active_colors, lang_font);
 
+        let simulation_mode_box = container(
+            column![
+                text("Simulation Mode").size(16).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
+                Space::with_height(Length::Fixed(8.0)),
+                dry_run_toggle
+            ]
+            .spacing(4)
+        )
+        .padding(15)
+        .width(Length::Fill)
+        .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors })));
+
         let lang_code = self.current_language.name();
         let lang_svg = r#"<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="9" fill="white" stroke="black" stroke-width="1.5"/>
@@ -890,16 +902,13 @@ impl CleanerApp {
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenCustomClean)
-            .style(iced::theme::Button::Custom(Box::new(style::CustomCleanButtonStyle { custom_colors: active_colors })));
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
 
         let left_panel_content = column![
             Space::with_height(Length::Fixed(48.0)),
             options_box,
-            Space::with_height(Length::Fixed(5.0)),
-            container(dry_run_toggle)
-                .padding(12)
-                .width(Length::Fill)
-                .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: active_colors }))),
+            Space::with_height(Length::Fixed(15.0)),
+            simulation_mode_box,
             Space::with_height(Length::Fixed(5.0)),
             execute_button,
             Space::with_height(Length::Fixed(4.0)),

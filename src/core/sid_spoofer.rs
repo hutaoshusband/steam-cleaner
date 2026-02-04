@@ -32,7 +32,6 @@ pub fn spoof_hkcu_detailed(
         "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
     ];
 
-    // Delete individual game tracking keys
     if delete_faceit {
         for key in ["Software\\FaceIt", "Software\\Faceit Ltd"] {
             if dry_run {
