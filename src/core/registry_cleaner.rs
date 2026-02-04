@@ -1,18 +1,18 @@
 // src/core/registry_cleaner.rs
 
-use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_WRITE, HKEY_CURRENT_USER, HKEY_USERS};
-use winreg::RegKey;
-use uuid::Uuid;
+use crate::core::file_cleaner::kill_process;
 use rand::Rng;
 use std::io;
-use std::time::Duration;
-use std::thread::sleep;
-use crate::core::file_cleaner::kill_process;
 use std::process::Command;
+use std::thread::sleep;
+use std::time::Duration;
+use uuid::Uuid;
+use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, HKEY_USERS, KEY_WRITE};
+use winreg::RegKey;
 
 pub fn clean_registry(dry_run: bool) -> io::Result<Vec<String>> {
     let mut logs = Vec::new();
-    
+
     let actions: Vec<fn(bool, &mut Vec<String>) -> io::Result<()>> = vec![
         spoof_machine_guid,
         spoof_hw_profile_guid,
@@ -39,10 +39,8 @@ pub fn clean_registry(dry_run: bool) -> io::Result<Vec<String>> {
 pub fn clean_aggressive_registry(dry_run: bool) -> io::Result<Vec<String>> {
     let mut logs = Vec::new();
 
-    let aggressive_actions: Vec<fn(bool, &mut Vec<String>) -> io::Result<()>> = vec![
-        delete_more_valve_keys,
-        clean_system_caches,
-    ];
+    let aggressive_actions: Vec<fn(bool, &mut Vec<String>) -> io::Result<()>> =
+        vec![delete_more_valve_keys, clean_system_caches];
 
     for action in aggressive_actions {
         action(dry_run, &mut logs)?;
@@ -51,14 +49,14 @@ pub fn clean_aggressive_registry(dry_run: bool) -> io::Result<Vec<String>> {
     Ok(logs)
 }
 
-fn spoof_machine_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn spoof_machine_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let new_guid = Uuid::new_v4().to_string();
     let message = format!("[Registry] Would spoof MachineGuid to: {}", new_guid);
     if dry_run {
         logs.push(message);
         return Ok(());
     }
-    
+
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let crypto = hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Cryptography", KEY_WRITE)?;
     crypto.set_value("MachineGuid", &new_guid)?;
@@ -66,7 +64,7 @@ fn spoof_machine_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     Ok(())
 }
 
-fn spoof_hw_profile_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn spoof_hw_profile_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let new_hw_guid = format!("{{{}}}", Uuid::new_v4());
     let message = format!("[Registry] Would spoof HwProfileGuid to: {}", new_hw_guid);
     if dry_run {
@@ -84,7 +82,7 @@ fn spoof_hw_profile_guid(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()
     Ok(())
 }
 
-fn spoof_windows_nt_info(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn spoof_windows_nt_info(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let product_id = format!(
         "{}-{}-{}-{}",
         rand_digits(5),
@@ -97,25 +95,38 @@ fn spoof_windows_nt_info(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()
     let install_date: u32 = rand::thread_rng().gen_range(1_600_000_000..1_700_000_000);
 
     if dry_run {
-        logs.push(format!("[Registry] Would spoof ProductId to: {}", product_id));
-        logs.push(format!("[Registry] Would set RegisteredOwner to: {}", owner));
-        logs.push(format!("[Registry] Would set RegisteredOrganization to: {}", org));
-        logs.push(format!("[Registry] Would spoof InstallDate to: {}", install_date));
+        logs.push(format!(
+            "[Registry] Would spoof ProductId to: {}",
+            product_id
+        ));
+        logs.push(format!(
+            "[Registry] Would set RegisteredOwner to: {}",
+            owner
+        ));
+        logs.push(format!(
+            "[Registry] Would set RegisteredOrganization to: {}",
+            org
+        ));
+        logs.push(format!(
+            "[Registry] Would spoof InstallDate to: {}",
+            install_date
+        ));
         return Ok(());
     }
-    
+
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let current_version = hklm.open_subkey_with_flags(
-        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-        KEY_WRITE,
-    )?;
+    let current_version =
+        hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", KEY_WRITE)?;
 
     current_version.set_value("ProductId", &product_id)?;
     logs.push(format!("[Registry] ProductId spoofed: {}", product_id));
 
     current_version.set_value("RegisteredOwner", &owner)?;
     current_version.set_value("RegisteredOrganization", &org)?;
-    logs.push(format!("[Registry] RegisteredOwner: {}, RegisteredOrganization: {}", owner, org));
+    logs.push(format!(
+        "[Registry] RegisteredOwner: {}, RegisteredOrganization: {}",
+        owner, org
+    ));
 
     current_version.set_value("InstallDate", &install_date)?;
     logs.push(format!("[Registry] InstallDate spoofed: {}", install_date));
@@ -123,7 +134,7 @@ fn spoof_windows_nt_info(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()
     Ok(())
 }
 
-fn delete_steam_registry(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn delete_steam_registry(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let processes = [
         "steam.exe",
         "steamwebhelper.exe",
@@ -142,13 +153,19 @@ fn delete_steam_registry(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()
 
     let key_path = "Software\\Valve\\Steam";
     if dry_run {
-        logs.push(format!("[Registry] Would delete Steam registry key: {}", key_path));
+        logs.push(format!(
+            "[Registry] Would delete Steam registry key: {}",
+            key_path
+        ));
         return Ok(());
     }
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     match hkcu.delete_subkey_all(key_path) {
-        Ok(_) => logs.push(format!("[Registry] Deleted Steam registry key: {}", key_path)),
+        Ok(_) => logs.push(format!(
+            "[Registry] Deleted Steam registry key: {}",
+            key_path
+        )),
         Err(_) => logs.push(format!(
             "[Registry] Steam registry key not found or could not be deleted: {}",
             key_path
@@ -158,7 +175,58 @@ fn delete_steam_registry(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()
     Ok(())
 }
 
-fn spoof_computer_name(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn spoof_registered_owner(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let owner = rand_string(8);
+    let org = rand_string(10);
+
+    if dry_run {
+        logs.push(format!(
+            "[Registry] Would set RegisteredOwner to: {}",
+            owner
+        ));
+        logs.push(format!(
+            "[Registry] Would set RegisteredOrganization to: {}",
+            org
+        ));
+        return Ok(());
+    }
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let current_version =
+        hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", KEY_WRITE)?;
+
+    current_version.set_value("RegisteredOwner", &owner)?;
+    current_version.set_value("RegisteredOrganization", &org)?;
+    logs.push(format!(
+        "[Registry] RegisteredOwner: {}, RegisteredOrganization: {}",
+        owner, org
+    ));
+
+    Ok(())
+}
+
+pub fn spoof_install_date(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+    let install_date: u32 = rand::thread_rng().gen_range(1_600_000_000..1_700_000_000);
+
+    if dry_run {
+        logs.push(format!(
+            "[Registry] Would spoof InstallDate to: {}",
+            install_date
+        ));
+        return Ok(());
+    }
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let current_version =
+        hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", KEY_WRITE)?;
+
+    current_version.set_value("InstallDate", &install_date)?;
+    logs.push(format!("[Registry] InstallDate spoofed: {}", install_date));
+
+    Ok(())
+}
+
+pub fn spoof_computer_name(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let new_name = rand_string(10);
     if dry_run {
         logs.push(format!("[Registry] Would spoof Hostname to: {}", new_name));
@@ -177,7 +245,7 @@ fn spoof_computer_name(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> 
     Ok(())
 }
 
-fn delete_more_valve_keys(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn delete_more_valve_keys(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let hku = RegKey::predef(HKEY_USERS);
 
@@ -214,7 +282,7 @@ fn delete_more_valve_keys(dry_run: bool, logs: &mut Vec<String>) -> io::Result<(
     Ok(())
 }
 
-fn clean_system_caches(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
+pub fn clean_system_caches(dry_run: bool, logs: &mut Vec<String>) -> io::Result<()> {
     let paths_to_delete = vec![
         "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\AppCompatCache",
         "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\ShimCache",

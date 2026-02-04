@@ -1,11 +1,11 @@
 // src/core/file_cleaner.rs
 
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
-use std::io;
 
 pub fn kill_process(process_name: &str, dry_run: bool, logs: &mut Vec<String>) {
     let message = format!("[Process] Would terminate: {}", process_name);
@@ -30,22 +30,28 @@ pub fn kill_process(process_name: &str, dry_run: bool, logs: &mut Vec<String>) {
                 ));
             }
         }
-        Err(e) => logs.push(format!("[Process] Error terminating {}: {}", process_name, e)),
+        Err(e) => logs.push(format!(
+            "[Process] Error terminating {}: {}",
+            process_name, e
+        )),
     }
 }
 
-fn try_delete_dir_contents(path: &str, dry_run: bool, logs: &mut Vec<String>) {
+pub fn try_delete_dir_contents(path: &str, dry_run: bool, logs: &mut Vec<String>) {
     let dir = Path::new(path);
     if dir.exists() && dir.is_dir() {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let entry_path = entry.path();
-                let message = format!("[Directory] Would delete contents of: {}", entry_path.display());
+                let message = format!(
+                    "[Directory] Would delete contents of: {}",
+                    entry_path.display()
+                );
                 if dry_run {
                     logs.push(message);
                     continue;
                 }
-                
+
                 let _ = Command::new("attrib")
                     .args(&["-R", "-S", "-H", entry_path.to_str().unwrap_or("")])
                     .output();
@@ -55,17 +61,27 @@ fn try_delete_dir_contents(path: &str, dry_run: bool, logs: &mut Vec<String>) {
                     fs::remove_file(&entry_path)
                 };
                 match result {
-                    Ok(_) => logs.push(format!("[Directory] Deleted contents of: {}", entry_path.display())),
-                    Err(e) => logs.push(format!("[Directory] Failed to delete {}: {}", entry_path.display(), e)),
+                    Ok(_) => logs.push(format!(
+                        "[Directory] Deleted contents of: {}",
+                        entry_path.display()
+                    )),
+                    Err(e) => logs.push(format!(
+                        "[Directory] Failed to delete {}: {}",
+                        entry_path.display(),
+                        e
+                    )),
                 }
             }
         }
     } else {
-        logs.push(format!("[Directory] Not found or not a directory: {}", path));
+        logs.push(format!(
+            "[Directory] Not found or not a directory: {}",
+            path
+        ));
     }
 }
 
-fn try_delete(path: &str, dry_run: bool, logs: &mut Vec<String>) {
+pub fn try_delete(path: &str, dry_run: bool, logs: &mut Vec<String>) {
     let p = Path::new(path);
     if p.exists() {
         let message = format!("[File/Dir] Would delete: {}", path);
@@ -112,8 +128,8 @@ pub fn clean_cache(dry_run: bool) -> io::Result<Vec<String>> {
 
     let local = std::env::var("LOCALAPPDATA")
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-    let appdata = std::env::var("APPDATA")
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let appdata =
+        std::env::var("APPDATA").map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     let userprofile = std::env::var("USERPROFILE")
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     let locallow = local.replace("Local", "LocalLow");
@@ -176,18 +192,39 @@ pub fn clean_cache(dry_run: bool) -> io::Result<Vec<String>> {
         format!("{}\\D3DSCache", local),
         format!("{}\\Temp", local),
         "C:\\ProgramData\\NVIDIA Corporation\\NV_Cache".to_string(),
-        format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent", userprofile),
+        format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent",
+            userprofile
+        ),
         format!("{}\\AppData\\Local\\CrashDumps", userprofile),
         format!("{}\\AppData\\LocalLow\\Temp", userprofile),
-        format!("{}\\AppData\\Local\\Microsoft\\Windows\\WebCache", userprofile),
-        format!("{}\\AppData\\Local\\Microsoft\\Windows\\INetCache", userprofile),
+        format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\WebCache",
+            userprofile
+        ),
+        format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\INetCache",
+            userprofile
+        ),
         format!("{}\\Tracing", userprofile),
-        format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations", userprofile),
-        format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations", userprofile),
+        format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations",
+            userprofile
+        ),
+        format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations",
+            userprofile
+        ),
         format!("{}\\AppData\\Local\\Temp", userprofile),
         format!("{}\\AppData\\Local\\Packages", userprofile),
-        format!("{}\\AppData\\Local\\Microsoft\\Windows\\Caches", userprofile),
-        format!("{}\\AppData\\Local\\Microsoft\\Windows\\Explorer", userprofile),
+        format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Caches",
+            userprofile
+        ),
+        format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Explorer",
+            userprofile
+        ),
         // New paths for intensified cleaning
         format!("{}\\depotcache", steam_root),
         format!("{}\\Steam\\htmlcache", local),
@@ -208,36 +245,454 @@ pub fn clean_cache(dry_run: bool) -> io::Result<Vec<String>> {
     for file in harmless_files.iter() {
         try_delete(file, dry_run, &mut logs);
     }
-    
+
     try_delete_dir_contents(&format!("{}\\Temp", local), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\Temp", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\LocalLow\\Temp", userprofile), dry_run, &mut logs);
+    try_delete_dir_contents(
+        &format!("{}\\AppData\\Local\\Temp", userprofile),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!("{}\\AppData\\LocalLow\\Temp", userprofile),
+        dry_run,
+        &mut logs,
+    );
 
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\Microsoft\\Windows\\INetCache", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\Microsoft\\Windows\\WebCache", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\Microsoft\\Windows\\Caches", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\Microsoft\\Windows\\Explorer", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Local\\CrashDumps", userprofile), dry_run, &mut logs);
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\INetCache",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\WebCache",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Caches",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Explorer",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!("{}\\AppData\\Local\\CrashDumps", userprofile),
+        dry_run,
+        &mut logs,
+    );
 
-    try_delete_dir_contents(&format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations", userprofile), dry_run, &mut logs);
-    try_delete_dir_contents(&format!("{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations", userprofile), dry_run, &mut logs);
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        &format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations",
+            userprofile
+        ),
+        dry_run,
+        &mut logs,
+    );
 
     try_delete_dir_contents(&format!("{}\\Tracing", userprofile), dry_run, &mut logs);
     try_delete_dir_contents("C:\\Windows\\Temp", dry_run, &mut logs);
-    try_delete_dir_contents("C:\\ProgramData\\Microsoft\\Windows\\Caches", dry_run, &mut logs);
-    try_delete_dir_contents("C:\\ProgramData\\NVIDIA Corporation\\NV_Cache", dry_run, &mut logs);
+    try_delete_dir_contents(
+        "C:\\ProgramData\\Microsoft\\Windows\\Caches",
+        dry_run,
+        &mut logs,
+    );
+    try_delete_dir_contents(
+        "C:\\ProgramData\\NVIDIA Corporation\\NV_Cache",
+        dry_run,
+        &mut logs,
+    );
     try_delete_dir_contents(&format!("{}\\appcache", steam_root), dry_run, &mut logs);
     try_delete_dir_contents(&format!("{}\\logs", steam_root), dry_run, &mut logs);
     try_delete_dir_contents(&format!("{}\\dump", steam_root), dry_run, &mut logs);
     try_delete_dir_contents(&format!("{}\\shadercache", steam_root), dry_run, &mut logs);
     try_delete_dir_contents(&format!("{}\\userdata", steam_root), dry_run, &mut logs);
     try_delete_dir_contents(&format!("{}\\config", steam_root), dry_run, &mut logs);
-    
+
     if !dry_run {
         let _ = Command::new("explorer").spawn();
         logs.push("Cache cleanup complete.".to_string());
     }
 
     Ok(logs)
+}
+
+/// Granular cleaning function that accepts individual options for each cleaning step
+pub fn clean_granular(
+    dry_run: bool,
+    kill_steam_processes: bool,
+    kill_explorer: bool,
+    delete_login_users_vdf: bool,
+    delete_config_vdf: bool,
+    delete_localconfig_vdf: bool,
+    delete_steam_appdata_vdf: bool,
+    delete_ssfn_files: bool,
+    delete_libraryfolders_vdf: bool,
+    delete_userdata_dir: bool,
+    delete_config_dir: bool,
+    delete_logs_dir: bool,
+    delete_appcache_dir: bool,
+    delete_dump_dir: bool,
+    delete_shadercache_dir: bool,
+    delete_depotcache_dir: bool,
+    delete_steam_appdata_dir: bool,
+    delete_valve_locallow_dir: bool,
+    delete_d3d_cache: bool,
+    delete_d3d_cache_contents: bool,
+    delete_local_temp: bool,
+    delete_local_low_temp: bool,
+    delete_local_temp_contents: bool,
+    delete_user_temp: bool,
+    delete_user_temp_contents: bool,
+    delete_windows_temp: bool,
+    delete_windows_temp_contents: bool,
+    delete_crash_dumps: bool,
+    delete_web_cache: bool,
+    delete_web_cache_contents: bool,
+    delete_inet_cache: bool,
+    delete_inet_cache_contents: bool,
+    delete_windows_caches: bool,
+    delete_windows_caches_contents: bool,
+    delete_windows_explorer: bool,
+    delete_windows_explorer_contents: bool,
+    delete_recent: bool,
+    delete_recent_contents: bool,
+    delete_automatic_destinations: bool,
+    delete_automatic_destinations_contents: bool,
+    delete_custom_destinations: bool,
+    delete_custom_destinations_contents: bool,
+    delete_tracing_dir: bool,
+    delete_tracing_dir_contents: bool,
+    delete_nvidia_cache: bool,
+    delete_nvidia_cache_contents: bool,
+    delete_windows_prefetch: bool,
+    delete_my_games: bool,
+    delete_easyanticheat: bool,
+    delete_battleye: bool,
+    delete_faceit: bool,
+) -> Vec<String> {
+    let mut logs = Vec::new();
+
+    // Kill processes
+    let steam_processes = [
+        "steam.exe",
+        "steamwebhelper.exe",
+        "GameOverlayUI.exe",
+        "steamerrorreporter.exe",
+    ];
+
+    if kill_steam_processes {
+        for proc in steam_processes.iter() {
+            kill_process(proc, dry_run, &mut logs);
+        }
+    }
+    if kill_explorer {
+        kill_process("explorer.exe", dry_run, &mut logs);
+    }
+
+    if (kill_steam_processes || kill_explorer) && !dry_run {
+        logs.push("Waiting 10 seconds to ensure processes are closed...".to_string());
+        sleep(Duration::from_secs(10));
+    }
+
+    // Get paths
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| String::new());
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| String::new());
+    let userprofile = std::env::var("USERPROFILE").unwrap_or_else(|_| String::new());
+    let locallow = local.replace("Local", "LocalLow");
+
+    // Find Steam root
+    let default_path = format!("{}\\Steam", local);
+    let possible_steam_paths = vec![
+        "C:\\Program Files (x86)\\Steam".to_string(),
+        "C:\\Program Files\\Steam".to_string(),
+        default_path.clone(),
+    ];
+    let steam_root = possible_steam_paths
+        .iter()
+        .find(|p| Path::new(p).exists())
+        .unwrap_or(&default_path)
+        .to_string();
+
+    let steam_config = format!("{}\\config", steam_root);
+
+    // Delete Steam login files
+    if delete_login_users_vdf {
+        let path = format!("{}\\loginusers.vdf", steam_config);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_config_vdf {
+        let path = format!("{}\\config.vdf", steam_config);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_localconfig_vdf {
+        let path = format!("{}\\localconfig.vdf", steam_config);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_steam_appdata_vdf {
+        let path = format!("{}\\SteamAppData.vdf", steam_config);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_libraryfolders_vdf {
+        let path = format!("{}\\libraryfolders.vdf", steam_root);
+        try_delete(&path, dry_run, &mut logs);
+    }
+
+    // Delete SSFN files
+    if delete_ssfn_files {
+        if let Ok(entries) = fs::read_dir(&steam_root) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with("ssfn") {
+                        try_delete(path.to_str().unwrap_or_default(), dry_run, &mut logs);
+                    }
+                }
+            }
+        }
+    }
+
+    // Delete Steam directories
+    if delete_userdata_dir {
+        let path = format!("{}\\userdata", steam_root);
+        if delete_userdata_dir {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_config_dir {
+        try_delete_dir_contents(&steam_config, dry_run, &mut logs);
+    }
+    if delete_logs_dir {
+        let path = format!("{}\\logs", steam_root);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_appcache_dir {
+        let path = format!("{}\\appcache", steam_root);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_dump_dir {
+        let path = format!("{}\\dump", steam_root);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_shadercache_dir {
+        let path = format!("{}\\shadercache", steam_root);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_depotcache_dir {
+        let path = format!("{}\\depotcache", steam_root);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+
+    // Delete Steam AppData directories
+    if delete_steam_appdata_dir {
+        let path = format!("{}\\Steam", appdata);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_valve_locallow_dir {
+        let path = format!("{}\\Valve\\Steam", locallow);
+        try_delete(&path, dry_run, &mut logs);
+    }
+
+    // Delete D3D cache
+    if delete_d3d_cache {
+        let path = format!("{}\\D3DSCache", local);
+        if delete_d3d_cache_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+
+    // Delete temp directories
+    if delete_local_temp {
+        let path = format!("{}\\Temp", local);
+        if delete_local_temp_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_local_low_temp {
+        let path = format!("{}\\AppData\\LocalLow\\Temp", userprofile);
+        try_delete(&path, dry_run, &mut logs);
+    }
+    if delete_user_temp {
+        let path = format!("{}\\AppData\\Local\\Temp", userprofile);
+        if delete_user_temp_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_windows_temp {
+        let path = "C:\\Windows\\Temp";
+        if delete_windows_temp_contents {
+            try_delete_dir_contents(path, dry_run, &mut logs);
+        } else {
+            try_delete(path, dry_run, &mut logs);
+        }
+    }
+
+    // Delete crash dumps
+    if delete_crash_dumps {
+        let path = format!("{}\\AppData\\Local\\CrashDumps", userprofile);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+
+    // Delete Windows Explorer caches
+    if delete_web_cache {
+        let path = format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\WebCache",
+            userprofile
+        );
+        if delete_web_cache_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_inet_cache {
+        let path = format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\INetCache",
+            userprofile
+        );
+        if delete_inet_cache_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_windows_caches {
+        let path = format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Caches",
+            userprofile
+        );
+        if delete_windows_caches_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_windows_explorer {
+        let path = format!(
+            "{}\\AppData\\Local\\Microsoft\\Windows\\Explorer",
+            userprofile
+        );
+        if delete_windows_explorer_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+
+    // Delete recent files
+    if delete_recent {
+        let path = format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent",
+            userprofile
+        );
+        if delete_recent_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_automatic_destinations {
+        let path = format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations",
+            userprofile
+        );
+        if delete_automatic_destinations_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+    if delete_custom_destinations {
+        let path = format!(
+            "{}\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations",
+            userprofile
+        );
+        if delete_custom_destinations_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+
+    // Delete tracing directory
+    if delete_tracing_dir {
+        let path = format!("{}\\Tracing", userprofile);
+        if delete_tracing_dir_contents {
+            try_delete_dir_contents(&path, dry_run, &mut logs);
+        } else {
+            try_delete(&path, dry_run, &mut logs);
+        }
+    }
+
+    // Delete NVIDIA cache
+    if delete_nvidia_cache {
+        let path = "C:\\ProgramData\\NVIDIA Corporation\\NV_Cache";
+        if delete_nvidia_cache_contents {
+            try_delete_dir_contents(path, dry_run, &mut logs);
+        } else {
+            try_delete(path, dry_run, &mut logs);
+        }
+    }
+
+    // Deep cleaning options
+    if delete_windows_prefetch {
+        try_delete_dir_contents("C:\\Windows\\Prefetch", dry_run, &mut logs);
+    }
+    if delete_my_games {
+        let path = format!("{}\\Documents\\My Games", userprofile);
+        try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_easyanticheat {
+        try_delete("C:\\ProgramData\\EasyAntiCheat", dry_run, &mut logs);
+    }
+    if delete_battleye {
+        try_delete("C:\\ProgramData\\BattlEye", dry_run, &mut logs);
+    }
+    if delete_faceit {
+        try_delete("C:\\ProgramData\\Faceit", dry_run, &mut logs);
+    }
+
+    if !dry_run {
+        let _ = Command::new("explorer").spawn();
+        logs.push("Cache cleanup complete.".to_string());
+    }
+
+    logs
 }

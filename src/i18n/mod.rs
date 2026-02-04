@@ -176,14 +176,105 @@ pub struct ThemeCustomizerTranslations {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomCleanTranslations {
     pub title: String,
-    pub spoof_system_ids: String,
-    pub spoof_mac_address: String,
-    pub spoof_volume_id: String,
-    pub clean_steam: String,
-    pub aggressive_clean: String,
     pub execute_custom_clean: String,
     pub cleaning_in_progress: String,
     pub back_to_main: String,
+
+    // Section headers
+    pub system_id_spoofing: String,
+    pub registry_game_tracking: String,
+    pub registry_system_caches: String,
+    pub mac_address_spoofing: String,
+    pub volume_id_spoofing: String,
+    pub steam_login_files: String,
+    pub steam_directories: String,
+    pub system_cache_directories: String,
+    pub windows_explorer_caches: String,
+    pub recent_files: String,
+    pub gpu_caches: String,
+    pub deep_cleaning: String,
+    pub processes: String,
+
+    // Granular options - System ID Spoofing
+    pub spoof_machine_guid: String,
+    pub spoof_hw_profile_guid: String,
+    pub spoof_product_id: String,
+    pub spoof_registered_owner: String,
+    pub spoof_install_date: String,
+    pub spoof_computer_name: String,
+
+    // Granular options - Registry Game Tracking
+    pub delete_steam_registry_hkcu: String,
+    pub delete_valve_registry_hklm: String,
+    pub delete_valve_registry_hku: String,
+    pub delete_faceit_hkcu: String,
+    pub delete_riot_hkcu: String,
+    pub delete_esea_hkcu: String,
+    pub delete_eac_hkcu: String,
+    pub delete_battleye_hkcu: String,
+    pub delete_startup_run: String,
+
+    // Granular options - Registry System Caches
+    pub clean_app_compat_cache: String,
+    pub clean_shim_cache: String,
+    pub clean_app_compat_flags: String,
+
+    // Granular options - MAC & Volume ID
+    pub spoof_mac_addresses: String,
+    pub spoof_volume_c_drive: String,
+
+    // Granular options - Steam Login Files
+    pub delete_login_users_vdf: String,
+    pub delete_config_vdf: String,
+    pub delete_localconfig_vdf: String,
+    pub delete_steam_appdata_vdf: String,
+    pub delete_ssfn_files: String,
+    pub delete_libraryfolders_vdf: String,
+
+    // Granular options - Steam Directories
+    pub delete_userdata_dir: String,
+    pub delete_config_dir: String,
+    pub delete_logs_dir: String,
+    pub delete_appcache_dir: String,
+    pub delete_dump_dir: String,
+    pub delete_shadercache_dir: String,
+    pub delete_depotcache_dir: String,
+
+    // Granular options - System Cache Directories
+    pub delete_steam_appdata_dir: String,
+    pub delete_valve_locallow_dir: String,
+    pub delete_d3d_cache: String,
+    pub delete_local_temp: String,
+    pub delete_local_low_temp: String,
+    pub delete_user_temp: String,
+    pub delete_windows_temp: String,
+    pub delete_crash_dumps: String,
+
+    // Granular options - Windows Explorer Caches
+    pub delete_web_cache: String,
+    pub delete_inet_cache: String,
+    pub delete_windows_caches: String,
+    pub delete_windows_explorer: String,
+
+    // Granular options - Recent Files
+    pub delete_recent: String,
+    pub delete_automatic_destinations: String,
+    pub delete_custom_destinations: String,
+    pub delete_tracing_dir: String,
+
+    // Granular options - GPU Caches
+    pub delete_nvidia_cache: String,
+
+    // Granular options - Deep Cleaning
+    pub delete_windows_prefetch: String,
+    pub delete_my_games: String,
+    pub delete_easyanticheat: String,
+    pub delete_battleye: String,
+    pub delete_faceit: String,
+
+    // Granular options - Processes
+    pub kill_steam_processes: String,
+    pub kill_explorer: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -336,14 +427,105 @@ fn default_translations() -> Translations {
         },
         custom_clean: CustomCleanTranslations {
             title: "Custom Cleaning Options".to_string(),
-            spoof_system_ids: "Spoof System IDs".to_string(),
-            spoof_mac_address: "Spoof MAC Address".to_string(),
-            spoof_volume_id: "Spoof Volume ID".to_string(),
-            clean_steam: "Clean Steam".to_string(),
-            aggressive_clean: "Aggressive Clean".to_string(),
             execute_custom_clean: "Execute Custom Clean".to_string(),
             cleaning_in_progress: "Cleaning in Progress...".to_string(),
             back_to_main: "<- Back to Main".to_string(),
+
+            // Section headers
+            system_id_spoofing: "System ID Spoofing".to_string(),
+            registry_game_tracking: "Registry - Game Tracking".to_string(),
+            registry_system_caches: "Registry - System Caches".to_string(),
+            mac_address_spoofing: "MAC Address Spoofing".to_string(),
+            volume_id_spoofing: "Volume ID Spoofing".to_string(),
+            steam_login_files: "Steam Login Files".to_string(),
+            steam_directories: "Steam Directories".to_string(),
+            system_cache_directories: "System Cache Directories".to_string(),
+            windows_explorer_caches: "Windows Explorer Caches".to_string(),
+            recent_files: "Recent Files".to_string(),
+            gpu_caches: "GPU Caches".to_string(),
+            deep_cleaning: "Deep Cleaning".to_string(),
+            processes: "Processes".to_string(),
+
+            // Granular options - System ID Spoofing
+            spoof_machine_guid: "Spoof Machine GUID".to_string(),
+            spoof_hw_profile_guid: "Spoof HwProfileGuid".to_string(),
+            spoof_product_id: "Spoof Windows Product ID".to_string(),
+            spoof_registered_owner: "Spoof Registered Owner/Org".to_string(),
+            spoof_install_date: "Spoof Windows Install Date".to_string(),
+            spoof_computer_name: "Spoof Computer Name".to_string(),
+
+            // Granular options - Registry Game Tracking
+            delete_steam_registry_hkcu: "Delete HKCU\\Software\\Valve\\Steam".to_string(),
+            delete_valve_registry_hklm: "Delete HKLM\\Software\\Valve".to_string(),
+            delete_valve_registry_hku: "Delete HKU users\\Software\\Valve".to_string(),
+            delete_faceit_hkcu: "Delete HKCU\\Software\\FaceIt".to_string(),
+            delete_riot_hkcu: "Delete HKCU\\Software\\Riot Games".to_string(),
+            delete_esea_hkcu: "Delete HKCU\\Software\\ESEA".to_string(),
+            delete_eac_hkcu: "Delete HKCU\\Software\\EasyAntiCheat".to_string(),
+            delete_battleye_hkcu: "Delete HKCU\\Software\\Battleye".to_string(),
+            delete_startup_run: "Delete HKCU\\...\\Run entries".to_string(),
+
+            // Granular options - Registry System Caches
+            clean_app_compat_cache: "Delete AppCompatCache".to_string(),
+            clean_shim_cache: "Delete ShimCache".to_string(),
+            clean_app_compat_flags: "Delete AppCompatFlags".to_string(),
+
+            // Granular options - MAC & Volume ID
+            spoof_mac_addresses: "Spoof All Network MAC Addresses".to_string(),
+            spoof_volume_c_drive: "Spoof C: Drive Volume ID".to_string(),
+
+            // Granular options - Steam Login Files
+            delete_login_users_vdf: "Delete loginusers.vdf".to_string(),
+            delete_config_vdf: "Delete config.vdf".to_string(),
+            delete_localconfig_vdf: "Delete localconfig.vdf".to_string(),
+            delete_steam_appdata_vdf: "Delete SteamAppData.vdf".to_string(),
+            delete_ssfn_files: "Delete all SSFN files".to_string(),
+            delete_libraryfolders_vdf: "Delete libraryfolders.vdf".to_string(),
+
+            // Granular options - Steam Directories
+            delete_userdata_dir: "Delete userdata directory".to_string(),
+            delete_config_dir: "Delete config directory".to_string(),
+            delete_logs_dir: "Delete logs directory".to_string(),
+            delete_appcache_dir: "Delete appcache directory".to_string(),
+            delete_dump_dir: "Delete dump directory".to_string(),
+            delete_shadercache_dir: "Delete shadercache directory".to_string(),
+            delete_depotcache_dir: "Delete depotcache directory".to_string(),
+
+            // Granular options - System Cache Directories
+            delete_steam_appdata_dir: "Delete Steam AppData folder".to_string(),
+            delete_valve_locallow_dir: "Delete Valve LocalLow folder".to_string(),
+            delete_d3d_cache: "Delete D3D shader cache".to_string(),
+            delete_local_temp: "Delete Local\\Temp".to_string(),
+            delete_local_low_temp: "Delete LocalLow\\Temp".to_string(),
+            delete_user_temp: "Delete user Temp".to_string(),
+            delete_windows_temp: "Delete Windows\\Temp".to_string(),
+            delete_crash_dumps: "Delete CrashDumps folder".to_string(),
+
+            // Granular options - Windows Explorer Caches
+            delete_web_cache: "Delete WebCache".to_string(),
+            delete_inet_cache: "Delete INetCache".to_string(),
+            delete_windows_caches: "Delete Windows Caches".to_string(),
+            delete_windows_explorer: "Delete Windows Explorer folder".to_string(),
+
+            // Granular options - Recent Files
+            delete_recent: "Delete Recent folder".to_string(),
+            delete_automatic_destinations: "Delete AutomaticDestinations".to_string(),
+            delete_custom_destinations: "Delete CustomDestinations".to_string(),
+            delete_tracing_dir: "Delete Tracing directory".to_string(),
+
+            // Granular options - GPU Caches
+            delete_nvidia_cache: "Delete NVIDIA NV_Cache".to_string(),
+
+            // Granular options - Deep Cleaning
+            delete_windows_prefetch: "Delete Windows Prefetch".to_string(),
+            delete_my_games: "Delete My Games folder".to_string(),
+            delete_easyanticheat: "Delete EasyAntiCheat data".to_string(),
+            delete_battleye: "Delete BattlEye data".to_string(),
+            delete_faceit: "Delete FACEIT data".to_string(),
+
+            // Granular options - Processes
+            kill_steam_processes: "Terminate Steam processes".to_string(),
+            kill_explorer: "Restart explorer.exe".to_string(),
         },
         redist: RedistTranslations {
             title: "Steam Redistributable Cleaner".to_string(),
