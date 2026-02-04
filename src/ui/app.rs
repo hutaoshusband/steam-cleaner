@@ -890,9 +890,10 @@ impl CleanerApp {
             .padding(15)
             .width(Length::Fill)
             .on_press(Message::OpenCustomClean)
-            .style(iced::theme::Button::Custom(Box::new(style::RainbowButtonStyle { custom_colors: active_colors, hue: self.rainbow_hue })));
+            .style(iced::theme::Button::Custom(Box::new(style::CustomCleanButtonStyle { custom_colors: active_colors })));
 
         let left_panel_content = column![
+            Space::with_height(Length::Fixed(48.0)),
             options_box,
             Space::with_height(Length::Fixed(5.0)),
             container(dry_run_toggle)

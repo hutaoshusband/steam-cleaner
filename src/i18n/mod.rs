@@ -350,7 +350,7 @@ pub fn load_translations(lang: Language) -> Translations {
 
 fn default_translations() -> Translations {
     Translations {
-        app_title: "Steam Cleaner 0.1.8".to_string(),
+        app_title: "Steam Cleaner 0.1.9".to_string(),
         main_window: MainWindowTranslations {
             ready_message: "[*] Ready. Select options and click Execute.".to_string(),
             system_spoofing: "System Spoofing".to_string(),

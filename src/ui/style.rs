@@ -971,13 +971,13 @@ impl container::StyleSheet for ConsoleContainerStyle {
                 border: border::Border {
                     color: GLITCH_BORDER,
                     width: 2.0,
-                    radius: 2.0.into(), // Sharp corners for terminal look
+                    radius: 4.0.into(), // Match OptionsBoxStyle radius
                 },
-                text_color: Some(ACCENT_GREEN), // Retro terminal green
+                text_color: Some(TEXT), // Retro terminal green
                 shadow: iced::Shadow {
-                    color: Color::from_rgba(0.15, 0.4, 0.15, 0.2),
+                    color: GLOW_RED, // Match OptionsBoxStyle red glow
                     offset: Vector::new(0.0, 0.0),
-                    blur_radius: 4.0,
+                    blur_radius: 8.0,
                 },
                 ..Default::default()
             },
@@ -1318,6 +1318,154 @@ impl checkbox::StyleSheet for CustomCheckboxStyle {
                     radius: 1.0.into(),
                 },
                 text_color: Some(TEXT),
+            },
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CustomCleanButtonStyle {
+    pub custom_colors: Option<CustomThemeColors>,
+}
+
+impl button::StyleSheet for CustomCleanButtonStyle {
+    type Style = iced::Theme;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        if let Some(colors) = &self.custom_colors {
+            return button::Appearance {
+                background: Some(colors.success.into()),
+                border: border::Border {
+                    color: colors.primary,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: colors.background,
+                ..Default::default()
+            };
+        }
+
+        match style {
+            iced::Theme::Light => button::Appearance {
+                background: Some(LIGHT_SUCCESS.into()),
+                border: border::Border {
+                    color: LIGHT_PRIMARY,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::Dracula => button::Appearance {
+                background: Some(DARK_SUCCESS.into()),
+                border: border::Border {
+                    color: DARK_PRIMARY,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(NORD_SUCCESS.into()),
+                border: border::Border {
+                    color: NORD_PRIMARY,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(CREAM_SUCCESS.into()),
+                border: border::Border {
+                    color: CREAM_PRIMARY,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: Color::WHITE,
+                ..Default::default()
+            },
+            _ => button::Appearance {
+                background: Some(Color::WHITE.into()), // White background in Red Retro mode
+                border: border::Border {
+                    color: CRT_RED,
+                    width: 2.0,
+                    radius: 4.0.into(),
+                },
+                text_color: CRT_RED, // Red text for contrast
+                shadow: iced::Shadow {
+                    color: GLOW_RED,
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 6.0,
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        if self.custom_colors.is_some() {
+            return self.active(style);
+        }
+
+        match style {
+            iced::Theme::Light => button::Appearance {
+                background: Some(Color::from_rgb(0.95, 0.95, 0.95).into()),
+                ..self.active(style)
+            },
+            iced::Theme::Dracula => button::Appearance {
+                background: Some(Color::from_rgb(0.95, 0.95, 0.95).into()),
+                ..self.active(style)
+            },
+            iced::Theme::Nord => button::Appearance {
+                background: Some(Color::from_rgb(0.95, 0.95, 0.95).into()),
+                ..self.active(style)
+            },
+            iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.95, 0.95, 0.95).into()),
+                ..self.active(style)
+            },
+            _ => button::Appearance {
+                background: Some(Color::from_rgb(0.9, 0.9, 0.9).into()), // Slightly darker on hover
+                border: border::Border {
+                    color: DANGER_RED,
+                    width: 2.0,
+                    radius: 4.0.into(),
+                },
+                text_color: DANGER_RED,
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.95, 0.0, 0.1, 0.5),
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 12.0,
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        if self.custom_colors.is_some() {
+            return self.active(style);
+        }
+
+        match style {
+            iced::Theme::Light
+            | iced::Theme::Dracula
+            | iced::Theme::Nord
+            | iced::Theme::SolarizedLight => button::Appearance {
+                background: Some(Color::from_rgb(0.85, 0.85, 0.85).into()),
+                ..self.active(style)
+            },
+            _ => button::Appearance {
+                background: Some(Color::from_rgb(0.8, 0.8, 0.8).into()),
+                border: border::Border {
+                    color: BLOOD_RED,
+                    width: 2.0,
+                    radius: 4.0.into(),
+                },
+                text_color: BLOOD_RED,
+                ..Default::default()
             },
         }
     }
