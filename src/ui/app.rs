@@ -750,6 +750,7 @@ impl Application for CleanerApp {
             Message::ChangeLanguage(lang) => {
                 self.current_language = lang;
                 self.translations = i18n::load_translations(lang);
+                self.language_selector_open = false;
                 Command::none()
             }
             Message::OpenLanguageSelector => {
