@@ -153,7 +153,13 @@
     "delete_battleye": "BattlEye-Daten löschen",
     "delete_faceit": "FACEIT-Daten löschen",
     "kill_steam_processes": "Steam-Prozesse beenden",
-    "kill_explorer": "explorer.exe neu starten"
+    "kill_explorer": "explorer.exe neu starten",
+    "redist_cleaning": "Bereinigung von Redistributables",
+    "clean_redist_common": "Allgemeine Redistributables bereinigen (_CommonRedist)",
+    "clean_redist_directx": "DirectX-Installer bereinigen",
+    "clean_redist_dotnet": ".NET Framework-Installer bereinigen",
+    "clean_redist_vcredist": "Visual C++ Redistributables bereinigen",
+    "clean_redist_installers": "Andere Installer/Support bereinigen (Aggressiv)"
   },
   "redist": {
     "title": "Steam Redistributable Cleaner",
@@ -169,7 +175,7 @@
     "found_count": "{0} Ordner gefunden. Gesamtgröße: {1}",
     "clean_selected_items": "Ausgewählte Elemente bereinigen",
     "clean_results": "Bereinigungsergebnisse:",
-    "and_more": "...und {} weitere.",
+    "and_more": "...und {0} weitere.",
     "back_to_main": "<- Zurück zur Hauptansicht"
   },
   "common": {

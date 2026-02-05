@@ -153,7 +153,13 @@
     "delete_battleye": "Delete BattlEye data",
     "delete_faceit": "Delete FACEIT data",
     "kill_steam_processes": "Terminate Steam processes",
-    "kill_explorer": "Restart explorer.exe"
+    "kill_explorer": "Restart explorer.exe",
+    "redist_cleaning": "Redistributable Cleaning",
+    "clean_redist_common": "Clean Common Redistributables (_CommonRedist)",
+    "clean_redist_directx": "Clean DirectX Installers",
+    "clean_redist_dotnet": "Clean .NET Framework Installers",
+    "clean_redist_vcredist": "Clean Visual C++ Redistributables",
+    "clean_redist_installers": "Clean Other Installers/Support (Aggressive)"
   },
   "redist": {
     "title": "Steam Redistributable Cleaner",
@@ -166,10 +172,10 @@
     "scan_steam_libraries": "Scan Steam Libraries",
     "scanning": "Scanning... please wait.",
     "found_folders": "Found {0} folders. Total size: {1}",
-    "found_count": "Found {} folders. Total size: {}",
+    "found_count": "Found {0} folders. Total size: {1}",
     "clean_selected_items": "Clean Selected Items",
     "clean_results": "Clean Results:",
-    "and_more": "...and {} more.",
+    "and_more": "...and {0} more.",
     "back_to_main": "<- Back to Main"
   },
   "common": {

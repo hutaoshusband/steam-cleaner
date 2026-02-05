@@ -174,6 +174,11 @@ pub enum Message {
     CustomCleanToggleTracingDirContents(bool),
     CustomCleanToggleNvidiaCacheContents(bool),
     CustomCleanToggleD3dCacheContents(bool),
+    CustomCleanToggleRedistCommon(bool),
+    CustomCleanToggleRedistDirectX(bool),
+    CustomCleanToggleRedistDotNet(bool),
+    CustomCleanToggleRedistVCRedist(bool),
+    CustomCleanToggleRedistInstallers(bool),
     ChangeLanguage(Language),
     OpenLanguageSelector,
     CloseLanguageSelector,
@@ -288,6 +293,11 @@ impl Application for CleanerApp {
                     delete_faceit: false,
                     kill_steam_processes: false,
                     kill_explorer: false,
+                    clean_redist_common: false,
+                    clean_redist_directx: false,
+                    clean_redist_dotnet: false,
+                    clean_redist_vcredist: false,
+                    clean_redist_installers: false,
                     ..Default::default()
                 },
                 rainbow_hue: 0.0,
@@ -726,6 +736,11 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleTracingDirContents(value) => { self.custom_clean_options.delete_tracing_dir_contents = value; Command::none() }
             Message::CustomCleanToggleNvidiaCacheContents(value) => { self.custom_clean_options.delete_nvidia_cache_contents = value; Command::none() }
             Message::CustomCleanToggleD3dCacheContents(value) => { self.custom_clean_options.delete_d3d_cache_contents = value; Command::none() }
+            Message::CustomCleanToggleRedistCommon(value) => { self.custom_clean_options.clean_redist_common = value; Command::none() }
+            Message::CustomCleanToggleRedistDirectX(value) => { self.custom_clean_options.clean_redist_directx = value; Command::none() }
+            Message::CustomCleanToggleRedistDotNet(value) => { self.custom_clean_options.clean_redist_dotnet = value; Command::none() }
+            Message::CustomCleanToggleRedistVCRedist(value) => { self.custom_clean_options.clean_redist_vcredist = value; Command::none() }
+            Message::CustomCleanToggleRedistInstallers(value) => { self.custom_clean_options.clean_redist_installers = value; Command::none() }
             Message::ExecuteCustomClean => {
                 if self.state == State::Idle {
                     if self.custom_clean_options.clean_aggressive {
@@ -1686,6 +1701,17 @@ impl CleanerApp {
             ].spacing(10)
         );
 
+        let redist_cleaning_section = make_section(
+            &self.translations.custom_clean.redist_cleaning,
+            column![
+                make_checkbox(&self.translations.custom_clean.clean_redist_common, self.custom_clean_options.clean_redist_common, Message::CustomCleanToggleRedistCommon, active_colors, lang_font),
+                make_checkbox(&self.translations.custom_clean.clean_redist_directx, self.custom_clean_options.clean_redist_directx, Message::CustomCleanToggleRedistDirectX, active_colors, lang_font),
+                make_checkbox(&self.translations.custom_clean.clean_redist_dotnet, self.custom_clean_options.clean_redist_dotnet, Message::CustomCleanToggleRedistDotNet, active_colors, lang_font),
+                make_checkbox(&self.translations.custom_clean.clean_redist_vcredist, self.custom_clean_options.clean_redist_vcredist, Message::CustomCleanToggleRedistVCRedist, active_colors, lang_font),
+                make_checkbox(&self.translations.custom_clean.clean_redist_installers, self.custom_clean_options.clean_redist_installers, Message::CustomCleanToggleRedistInstallers, active_colors, lang_font),
+            ].spacing(10)
+        );
+
         let left_column = column![
             processes_section,
             Space::with_height(Length::Fixed(15.0)),
@@ -1696,6 +1722,10 @@ impl CleanerApp {
             registry_caches_section,
             Space::with_height(Length::Fixed(15.0)),
             mac_volume_section,
+            Space::with_height(Length::Fixed(15.0)),
+            recent_files_section,
+            Space::with_height(Length::Fixed(15.0)),
+            gpu_caches_section,
         ].spacing(10).width(Length::FillPortion(1));
 
         let right_column = column![
@@ -1707,11 +1737,9 @@ impl CleanerApp {
             Space::with_height(Length::Fixed(15.0)),
             explorer_caches_section,
             Space::with_height(Length::Fixed(15.0)),
-            recent_files_section,
-            Space::with_height(Length::Fixed(15.0)),
-            gpu_caches_section,
-            Space::with_height(Length::Fixed(15.0)),
             deep_cleaning_section,
+            Space::with_height(Length::Fixed(15.0)),
+            redist_cleaning_section,
         ].spacing(10).width(Length::FillPortion(1));
 
         let (button_text_str, on_press_message) = match self.state {
@@ -1750,6 +1778,7 @@ impl CleanerApp {
                     ]
                     .width(Length::Fill)
                 )
+                .style(iced::theme::Scrollable::Custom(Box::new(style::HiddenScrollbarStyle)))
             )
             .width(Length::Fill)
             .height(Length::Fill)

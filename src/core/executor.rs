@@ -108,6 +108,13 @@ pub struct CleaningOptions {
     // Granular - Steam Processes
     pub kill_steam_processes: bool,
     pub kill_explorer: bool,
+
+    // Granular - Redistributable Cleaning
+    pub clean_redist_common: bool,
+    pub clean_redist_directx: bool,
+    pub clean_redist_dotnet: bool,
+    pub clean_redist_vcredist: bool,
+    pub clean_redist_installers: bool,
 }
 
 pub async fn run_all_selected(options: CleaningOptions, on_log: impl Fn(String) + Send + Sync + 'static) -> Vec<String> {
@@ -152,7 +159,9 @@ pub async fn run_all_selected(options: CleaningOptions, on_log: impl Fn(String) 
         options.delete_windows_prefetch || options.delete_my_games ||
         options.delete_easyanticheat || options.delete_battleye ||
         options.delete_faceit || options.kill_steam_processes ||
-        options.kill_explorer
+        options.kill_explorer || options.clean_redist_common ||
+        options.clean_redist_directx || options.clean_redist_dotnet ||
+        options.clean_redist_vcredist || options.clean_redist_installers
     };
 
     if dry_run {
@@ -371,6 +380,58 @@ pub async fn run_all_selected(options: CleaningOptions, on_log: impl Fn(String) 
             };
             for m in &messages { on_log_inner(m.clone()); }
             messages
+        }));
+    }
+
+    // Redistributable cleaning
+    if options.clean_redist_common || options.clean_redist_directx ||
+       options.clean_redist_dotnet || options.clean_redist_vcredist || options.clean_redist_installers {
+        let on_log_inner = on_log.clone();
+        tasks.push(tokio::task::spawn_blocking(move || {
+            let mut logs = Vec::new();
+            let mut categories = Vec::new();
+
+            if options.clean_redist_common { categories.push(crate::core::redist::RedistCategory::CommonRedist); }
+            if options.clean_redist_directx { categories.push(crate::core::redist::RedistCategory::DirectX); }
+            if options.clean_redist_dotnet { categories.push(crate::core::redist::RedistCategory::DotNet); }
+            if options.clean_redist_vcredist { categories.push(crate::core::redist::RedistCategory::VCRedist); }
+            if options.clean_redist_installers { categories.push(crate::core::redist::RedistCategory::Installers); }
+
+            #[cfg(windows)]
+            {
+                use crate::core::steam;
+                if let Some(root) = steam::get_steam_root() {
+                    let libs = steam::get_library_folders(&root);
+                    let found = crate::core::redist::scan_redistributables(&libs, &categories);
+                    if !found.is_empty() {
+                        let m = format!("[*] Cleaning {} redistributable folder(s)...", found.len());
+                        on_log_inner(m.clone());
+                        logs.push(m);
+
+                        let clean_logs = crate::core::redist::clean_redistributables(&found, dry_run);
+                        for log in clean_logs {
+                            on_log_inner(log.clone());
+                            logs.push(log);
+                        }
+                    } else {
+                        let m = "[!] No redistributables found matching selected categories.".to_string();
+                        on_log_inner(m.clone());
+                        logs.push(m);
+                    }
+                } else {
+                    let m = "[!] Could not find Steam installation. Redistributable cleaning skipped.".to_string();
+                    on_log_inner(m.clone());
+                    logs.push(m);
+                }
+            }
+            #[cfg(not(windows))]
+            {
+                let m = "[!] Redistributable cleaning is only supported on Windows.".to_string();
+                on_log_inner(m.clone());
+                logs.push(m);
+            }
+
+            logs
         }));
     }
 

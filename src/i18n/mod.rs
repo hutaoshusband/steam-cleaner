@@ -278,6 +278,14 @@ pub struct CustomCleanTranslations {
     // Granular options - Processes
     pub kill_steam_processes: String,
     pub kill_explorer: String,
+
+    // Granular options - Redistributable Cleaning
+    pub redist_cleaning: String,
+    pub clean_redist_common: String,
+    pub clean_redist_directx: String,
+    pub clean_redist_dotnet: String,
+    pub clean_redist_vcredist: String,
+    pub clean_redist_installers: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -532,6 +540,14 @@ fn default_translations() -> Translations {
             // Granular options - Processes
             kill_steam_processes: "Terminate Steam processes".to_string(),
             kill_explorer: "Restart explorer.exe".to_string(),
+
+            // Granular options - Redistributable Cleaning
+            redist_cleaning: "Redistributable Cleaning".to_string(),
+            clean_redist_common: "Clean Common Redistributables (_CommonRedist)".to_string(),
+            clean_redist_directx: "Clean DirectX Installers".to_string(),
+            clean_redist_dotnet: "Clean .NET Framework Installers".to_string(),
+            clean_redist_vcredist: "Clean Visual C++ Redistributables".to_string(),
+            clean_redist_installers: "Clean Other Installers/Support (Aggressive)".to_string(),
         },
         redist: RedistTranslations {
             title: "Steam Redistributable Cleaner".to_string(),

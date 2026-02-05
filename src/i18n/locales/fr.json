@@ -153,7 +153,13 @@
     "delete_battleye": "Supprimer les données BattlEye",
     "delete_faceit": "Supprimer les données FACEIT",
     "kill_steam_processes": "Terminer les processus Steam",
-    "kill_explorer": "Redémarrer explorer.exe"
+    "kill_explorer": "Redémarrer explorer.exe",
+    "redist_cleaning": "Nettoyage des redistribuables",
+    "clean_redist_common": "Nettoyer les redistribuables communs (_CommonRedist)",
+    "clean_redist_directx": "Nettoyer les installateurs DirectX",
+    "clean_redist_dotnet": "Nettoyer les installateurs .NET Framework",
+    "clean_redist_vcredist": "Nettoyer les redistribuables Visual C++",
+    "clean_redist_installers": "Nettoyer les autres installateurs/Support (Agressif)"
   },
   "redist": {
     "title": "Nettoyeur de redistribuables Steam",
@@ -169,7 +175,7 @@
     "found_count": "{0} dossiers trouvés. Taille totale: {1}",
     "clean_selected_items": "Nettoyer les éléments sélectionnés",
     "clean_results": "Résultats du nettoyage:",
-    "and_more": "...et {} autres.",
+    "and_more": "...et {0} autres.",
     "back_to_main": "<- Retour au principal"
   },
   "common": {

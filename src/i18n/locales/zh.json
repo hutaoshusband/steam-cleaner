@@ -153,7 +153,13 @@
     "delete_battleye": "删除BattlEye数据",
     "delete_faceit": "删除FACEIT数据",
     "kill_steam_processes": "终止Steam进程",
-    "kill_explorer": "重启explorer.exe"
+    "kill_explorer": "重启explorer.exe",
+    "redist_cleaning": "可再发行组件清理",
+    "clean_redist_common": "清理常见可再发行组件 (_CommonRedist)",
+    "clean_redist_directx": "清理DirectX安装程序",
+    "clean_redist_dotnet": "清理.NET Framework安装程序",
+    "clean_redist_vcredist": "清理Visual C++可再发行组件",
+    "clean_redist_installers": "清理其他安装程序/支持 (激进)"
   },
   "redist": {
     "title": "Steam可再发行组件清理器",
@@ -169,7 +175,7 @@
     "found_count": "找到{0}个文件夹。总大小: {1}",
     "clean_selected_items": "清理所选项目",
     "clean_results": "清理结果:",
-    "and_more": "...还有{}个。",
+    "and_more": "...还有{0}个。",
     "back_to_main": "<- 返回主页"
   },
   "common": {

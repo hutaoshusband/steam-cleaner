@@ -153,7 +153,13 @@
     "delete_battleye": "Удалить данные BattlEye",
     "delete_faceit": "Удалить данные FACEIT",
     "kill_steam_processes": "Завершить процессы Steam",
-    "kill_explorer": "Перезапустить explorer.exe"
+    "kill_explorer": "Перезапустить explorer.exe",
+    "redist_cleaning": "Очистка распространяемых компонентов",
+    "clean_redist_common": "Очистить общие распространяемые (_CommonRedist)",
+    "clean_redist_directx": "Очистить установщики DirectX",
+    "clean_redist_dotnet": "Очистить установщики .NET Framework",
+    "clean_redist_vcredist": "Очистить распространяемые Visual C++",
+    "clean_redist_installers": "Очистить другие установщики/Поддержка (Агрессивно)"
   },
   "redist": {
     "title": "Очистка распространяемых компонентов Steam",
@@ -169,7 +175,7 @@
     "found_count": "Найдено {0} папок. Общий размер: {1}",
     "clean_selected_items": "Очистить выбранные элементы",
     "clean_results": "Результаты очистки:",
-    "and_more": "...и ещё {}.",
+    "and_more": "...и ещё {0}.",
     "back_to_main": "<- Назад к главному"
   },
   "common": {

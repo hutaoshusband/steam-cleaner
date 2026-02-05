@@ -153,7 +153,13 @@
     "delete_battleye": "BattlEyeデータを削除",
     "delete_faceit": "FACEITデータを削除",
     "kill_steam_processes": "Steamプロセスを終了",
-    "kill_explorer": "explorer.exeを再起動"
+    "kill_explorer": "explorer.exeを再起動",
+    "redist_cleaning": "再頒布可能コンポーネントのクリーニング",
+    "clean_redist_common": "一般的な再頒布可能コンポーネントをクリーニング (_CommonRedist)",
+    "clean_redist_directx": "DirectXインストーラーをクリーニング",
+    "clean_redist_dotnet": ".NET Frameworkインストーラーをクリーニング",
+    "clean_redist_vcredist": "Visual C++再頒布可能コンポーネントをクリーニング",
+    "clean_redist_installers": "その他のインストーラー/サポートをクリーニング (攻撃的)"
   },
   "redist": {
     "title": "Steam再頒布可能コンポーネントクリーナー",
@@ -169,7 +175,7 @@
     "found_count": "{0}個のフォルダーが見つかりました。合計サイズ: {1}",
     "clean_selected_items": "選択したアイテムをクリーンアップ",
     "clean_results": "クリーンアップ結果:",
-    "and_more": "...他に{}個。",
+    "and_more": "...他に{0}個。",
     "back_to_main": "<- メインに戻る"
   },
   "common": {

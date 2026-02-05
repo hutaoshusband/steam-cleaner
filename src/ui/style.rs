@@ -1,4 +1,4 @@
-use iced::widget::{button, checkbox, container, toggler};
+use iced::widget::{button, checkbox, container, scrollable, toggler};
 use iced::{border, Background, Color, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -1913,5 +1913,42 @@ impl button::StyleSheet for LanguageButtonStyle {
             },
             ..active
         }
+    }
+}
+
+pub struct HiddenScrollbarStyle;
+
+impl scrollable::StyleSheet for HiddenScrollbarStyle {
+    type Style = iced::Theme;
+
+    fn active(&self, _style: &Self::Style) -> scrollable::Appearance {
+        scrollable::Appearance {
+            container: Default::default(),
+            scrollbar: scrollable::Scrollbar {
+                background: None,
+                scroller: scrollable::Scroller {
+                    color: Color::TRANSPARENT,
+                    border: border::Border {
+                        color: Color::TRANSPARENT,
+                        width: 0.0,
+                        radius: 0.0.into(),
+                    },
+                },
+                border: border::Border {
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: 0.0.into(),
+                },
+            },
+            gap: Default::default(),
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style, is_hovered: bool) -> scrollable::Appearance {
+        self.active(style)
+    }
+
+    fn dragging(&self, style: &Self::Style) -> scrollable::Appearance {
+        self.active(style)
     }
 }
