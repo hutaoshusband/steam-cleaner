@@ -161,7 +161,9 @@
     "clean_redist_vcredist": "清理Visual C++可再发行组件",
     "clean_redist_installers": "清理其他安装程序/支持 (激进)",
     "select_all": "全选",
-    "deselect_all": "取消全选"
+    "deselect_all": "取消全选",
+    "select_all_options": "选择所有选项",
+    "deselect_all_options": "取消选择所有选项"
   },
   "redist": {
     "title": "Steam可再发行组件清理器",

@@ -161,7 +161,9 @@
     "clean_redist_vcredist": "Pulisci redistribuibili Visual C++",
     "clean_redist_installers": "Pulisci altri installer/Supporto (Aggressivo)",
     "select_all": "Seleziona tutto",
-    "deselect_all": "Deseleziona tutto"
+    "deselect_all": "Deseleziona tutto",
+    "select_all_options": "Seleziona tutte le opzioni",
+    "deselect_all_options": "Deseleziona tutte le opzioni"
   },
   "redist": {
     "title": "Pulitore redistribuibili Steam",
