@@ -165,7 +165,7 @@
     "other_installers_aggressive": "Other Installers/Support (Aggressive)",
     "scan_steam_libraries": "Scan Steam Libraries",
     "scanning": "Scanning... please wait.",
-    "found_folders": "Found {} folders. Total size: {}",
+    "found_folders": "Found {0} folders. Total size: {1}",
     "found_count": "Found {} folders. Total size: {}",
     "clean_selected_items": "Clean Selected Items",
     "clean_results": "Clean Results:",
