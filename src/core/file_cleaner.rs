@@ -1,11 +1,16 @@
 // src/core/file_cleaner.rs
 
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::Path;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
+
+use regex::Regex;
+
+use crate::core::steam;
 
 pub fn kill_process(process_name: &str, dry_run: bool, logs: &mut Vec<String>) {
     let message = format!("[Process] Would terminate: {}", process_name);
@@ -107,7 +112,111 @@ pub fn try_delete(path: &str, dry_run: bool, logs: &mut Vec<String>) {
     }
 }
 
-pub fn clean_cache(dry_run: bool) -> io::Result<Vec<String>> {
+fn extract_installdir(manifest_contents: &str, regex: &Regex) -> Option<String> {
+    regex
+        .captures(manifest_contents)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str().trim().to_string())
+}
+
+fn collect_manifest_install_dirs(library_path: &Path) -> (HashSet<String>, usize) {
+    let mut install_dirs = HashSet::new();
+    let mut manifest_count = 0;
+    let regex = match Regex::new(r#"(?i)\"installdir\"\s+\"([^\"]+)\""#) {
+        Ok(regex) => regex,
+        Err(_) => return (install_dirs, manifest_count),
+    };
+
+    if let Ok(entries) = fs::read_dir(library_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let file_name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(name) => name,
+                None => continue,
+            };
+            if !file_name.starts_with("appmanifest_") || !file_name.ends_with(".acf") {
+                continue;
+            }
+
+            manifest_count += 1;
+            if let Ok(contents) = fs::read_to_string(&path) {
+                if let Some(installdir) = extract_installdir(&contents, &regex) {
+                    install_dirs.insert(installdir.to_lowercase());
+                }
+            }
+        }
+    }
+
+    (install_dirs, manifest_count)
+}
+
+fn clean_orphaned_game_folders(steam_root: &str, dry_run: bool, logs: &mut Vec<String>) {
+    let steam_root_path = Path::new(steam_root);
+    if !steam_root_path.exists() {
+        logs.push(format!(
+            "[Steam] Steam root not found at {}. Skipping orphaned folder scan.",
+            steam_root
+        ));
+        return;
+    }
+
+    let libraries = steam::get_library_folders(steam_root_path);
+    if libraries.is_empty() {
+        logs.push("[Steam] No Steam libraries found. Skipping orphaned folder scan.".to_string());
+        return;
+    }
+
+    let mut orphaned_total = 0;
+
+    for library in libraries {
+        let (install_dirs, manifest_count) = collect_manifest_install_dirs(&library);
+        let common_path = library.join("common");
+        if !common_path.exists() {
+            continue;
+        }
+
+        if manifest_count == 0 {
+            logs.push(format!(
+                "[Steam] No appmanifest files found in {}. Treating all folders as orphaned.",
+                library.display()
+            ));
+        }
+
+        if let Ok(entries) = fs::read_dir(&common_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+
+                let folder_name = match path.file_name().and_then(|n| n.to_str()) {
+                    Some(name) => name.to_string(),
+                    None => continue,
+                };
+
+                if !install_dirs.contains(&folder_name.to_lowercase()) {
+                    orphaned_total += 1;
+                    logs.push(format!(
+                        "[Steam] Orphaned game folder detected: {}",
+                        path.display()
+                    ));
+                    try_delete(path.to_str().unwrap_or_default(), dry_run, logs);
+                }
+            }
+        }
+    }
+
+    if orphaned_total == 0 {
+        logs.push("[Steam] No orphaned game folders found.".to_string());
+    } else {
+        logs.push(format!(
+            "[Steam] Orphaned game folder cleanup complete ({} folder(s)).",
+            orphaned_total
+        ));
+    }
+}
+
+pub fn clean_cache(dry_run: bool, delete_orphaned_game_folders: bool) -> io::Result<Vec<String>> {
     let mut logs = Vec::new();
 
     let processes = [
@@ -246,6 +355,10 @@ pub fn clean_cache(dry_run: bool) -> io::Result<Vec<String>> {
         try_delete(file, dry_run, &mut logs);
     }
 
+    if delete_orphaned_game_folders {
+        clean_orphaned_game_folders(&steam_root, dry_run, &mut logs);
+    }
+
     try_delete_dir_contents(&format!("{}\\Temp", local), dry_run, &mut logs);
     try_delete_dir_contents(
         &format!("{}\\AppData\\Local\\Temp", userprofile),
@@ -366,6 +479,7 @@ pub fn clean_granular(
     delete_dump_dir: bool,
     delete_shadercache_dir: bool,
     delete_depotcache_dir: bool,
+    delete_orphaned_game_folders: bool,
     delete_steam_appdata_dir: bool,
     delete_valve_locallow_dir: bool,
     delete_d3d_cache: bool,
@@ -512,6 +626,9 @@ pub fn clean_granular(
     if delete_depotcache_dir {
         let path = format!("{}\\depotcache", steam_root);
         try_delete_dir_contents(&path, dry_run, &mut logs);
+    }
+    if delete_orphaned_game_folders {
+        clean_orphaned_game_folders(&steam_root, dry_run, &mut logs);
     }
 
     // Delete Steam AppData directories

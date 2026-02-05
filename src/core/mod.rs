@@ -22,7 +22,7 @@ pub mod redist;
 
 #[cfg(not(windows))]
 pub mod file_cleaner {
-    pub fn clean_cache(_dry_run: bool) -> std::io::Result<Vec<String>> {
+    pub fn clean_cache(_dry_run: bool, _delete_orphaned_game_folders: bool) -> std::io::Result<Vec<String>> {
         Ok(vec!["File cleaning is only supported on Windows.".to_string()])
     }
 }

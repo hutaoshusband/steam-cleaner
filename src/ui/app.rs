@@ -64,6 +64,7 @@ pub enum Message {
     ToggleMac(bool),
     ToggleVolumeId(bool),
     ToggleSteam(bool),
+    ToggleOrphanedGameFolders(bool),
     ToggleAggressive(bool),
     ToggleDryRun(bool),
     Execute,
@@ -135,6 +136,7 @@ pub enum Message {
     CustomCleanToggleDumpDir(bool),
     CustomCleanToggleShadercacheDir(bool),
     CustomCleanToggleDepotcacheDir(bool),
+    CustomCleanToggleOrphanedGameFolders(bool),
     CustomCleanToggleSteamAppdataDir(bool),
     CustomCleanToggleValveLocallowDir(bool),
     CustomCleanToggleD3dCache(bool),
@@ -247,6 +249,7 @@ impl Application for CleanerApp {
                     delete_dump_dir: false,
                     delete_shadercache_dir: false,
                     delete_depotcache_dir: false,
+                    delete_orphaned_game_folders: false,
                     delete_steam_appdata_dir: false,
                     delete_valve_locallow_dir: false,
                     delete_d3d_cache: false,
@@ -315,6 +318,10 @@ impl Application for CleanerApp {
             }
             Message::ToggleSteam(value) => {
                 self.options.clean_steam = value;
+                Command::none()
+            }
+            Message::ToggleOrphanedGameFolders(value) => {
+                self.options.delete_orphaned_game_folders = value;
                 Command::none()
             }
             Message::ToggleAggressive(value) => {
@@ -660,6 +667,7 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleDumpDir(value) => { self.custom_clean_options.delete_dump_dir = value; Command::none() }
             Message::CustomCleanToggleShadercacheDir(value) => { self.custom_clean_options.delete_shadercache_dir = value; Command::none() }
             Message::CustomCleanToggleDepotcacheDir(value) => { self.custom_clean_options.delete_depotcache_dir = value; Command::none() }
+            Message::CustomCleanToggleOrphanedGameFolders(value) => { self.custom_clean_options.delete_orphaned_game_folders = value; Command::none() }
             Message::CustomCleanToggleSteamAppdataDir(value) => { self.custom_clean_options.delete_steam_appdata_dir = value; Command::none() }
             Message::CustomCleanToggleValveLocallowDir(value) => { self.custom_clean_options.delete_valve_locallow_dir = value; Command::none() }
             Message::CustomCleanToggleD3dCache(value) => { self.custom_clean_options.delete_d3d_cache = value; Command::none() }
@@ -791,6 +799,17 @@ impl CleanerApp {
             }
         }
 
+        fn make_checkbox<'a>(label: &'a str, value: bool, msg: fn(bool) -> Message, colors: Option<style::CustomThemeColors>, font: Option<iced::Font>) -> Element<'a, Message> {
+            checkbox(label, value)
+                .on_toggle(msg)
+                .style(iced::theme::Checkbox::Custom(Box::new(style::CustomCheckboxStyle { custom_colors: colors })))
+                .width(Length::Fill)
+                .text_size(14)
+                .font(font.unwrap_or(iced::Font::DEFAULT))
+                .spacing(8)
+                .into()
+        }
+
         let system_spoofing_options = column![
             text(&self.translations.main_window.system_spoofing).size(15).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             make_toggler(&self.translations.main_window.spoof_system_ids, self.options.spoof_system_ids, Message::ToggleSystemIds, active_colors, lang_font),
@@ -802,6 +821,7 @@ impl CleanerApp {
         let steam_cleaning_options = column![
             text(&self.translations.main_window.steam_cleaning).size(15).style(style::title_color(&self.current_theme)).font(lang_font.unwrap_or(iced::Font::DEFAULT)),
             make_toggler(&self.translations.main_window.clean_steam, self.options.clean_steam, Message::ToggleSteam, active_colors, lang_font),
+            make_toggler(&self.translations.main_window.delete_orphaned_game_folders, self.options.delete_orphaned_game_folders, Message::ToggleOrphanedGameFolders, active_colors, lang_font),
         ]
         .spacing(6);
 
@@ -1574,6 +1594,7 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_dump_dir, self.custom_clean_options.delete_dump_dir, Message::CustomCleanToggleDumpDir, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_shadercache_dir, self.custom_clean_options.delete_shadercache_dir, Message::CustomCleanToggleShadercacheDir, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_depotcache_dir, self.custom_clean_options.delete_depotcache_dir, Message::CustomCleanToggleDepotcacheDir, active_colors, lang_font),
+                make_checkbox(&self.translations.custom_clean.delete_orphaned_game_folders, self.custom_clean_options.delete_orphaned_game_folders, Message::CustomCleanToggleOrphanedGameFolders, active_colors, lang_font),
             ].spacing(10)
         );
 

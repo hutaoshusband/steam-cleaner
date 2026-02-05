@@ -99,6 +99,7 @@ pub struct MainWindowTranslations {
     pub spoof_volume_id: String,
     pub steam_cleaning: String,
     pub clean_steam: String,
+    pub delete_orphaned_game_folders: String,
     pub aggressive_cleaning: String,
     pub aggressive_clean: String,
     pub inspector_and_profiles: String,
@@ -240,6 +241,7 @@ pub struct CustomCleanTranslations {
     pub delete_dump_dir: String,
     pub delete_shadercache_dir: String,
     pub delete_depotcache_dir: String,
+    pub delete_orphaned_game_folders: String,
 
     // Granular options - System Cache Directories
     pub delete_steam_appdata_dir: String,
@@ -359,6 +361,7 @@ fn default_translations() -> Translations {
             spoof_volume_id: "Spoof Volume ID".to_string(),
             steam_cleaning: "Steam Cleaning".to_string(),
             clean_steam: "Clean Steam".to_string(),
+            delete_orphaned_game_folders: "Orphaned Game Folders".to_string(),
             aggressive_cleaning: "Aggressive Cleaning".to_string(),
             aggressive_clean: "Aggressive Clean".to_string(),
             inspector_and_profiles: "Inspector & Profiles".to_string(),
@@ -492,6 +495,7 @@ fn default_translations() -> Translations {
             delete_dump_dir: "Delete dump directory".to_string(),
             delete_shadercache_dir: "Delete shadercache directory".to_string(),
             delete_depotcache_dir: "Delete depotcache directory".to_string(),
+            delete_orphaned_game_folders: "Delete orphaned game folders (steamapps/common)".to_string(),
 
             // Granular options - System Cache Directories
             delete_steam_appdata_dir: "Delete Steam AppData folder".to_string(),

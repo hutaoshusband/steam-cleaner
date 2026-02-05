@@ -58,6 +58,7 @@ pub struct CleaningOptions {
     pub delete_dump_dir: bool,
     pub delete_shadercache_dir: bool,
     pub delete_depotcache_dir: bool,
+    pub delete_orphaned_game_folders: bool,
 
     // Granular - System Cache Directories
     pub delete_steam_appdata_dir: bool,
@@ -131,9 +132,10 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         options.delete_userdata_dir || options.delete_config_dir ||
         options.delete_logs_dir || options.delete_appcache_dir ||
         options.delete_dump_dir || options.delete_shadercache_dir ||
-        options.delete_depotcache_dir || options.delete_steam_appdata_dir ||
-        options.delete_valve_locallow_dir || options.delete_d3d_cache ||
-        options.delete_local_temp || options.delete_local_low_temp ||
+        options.delete_depotcache_dir || options.delete_orphaned_game_folders ||
+        options.delete_steam_appdata_dir || options.delete_valve_locallow_dir ||
+        options.delete_d3d_cache || options.delete_local_temp ||
+        options.delete_local_low_temp ||
         options.delete_local_temp_contents || options.delete_user_temp ||
         options.delete_user_temp_contents || options.delete_windows_temp ||
         options.delete_windows_temp_contents || options.delete_crash_dumps ||
@@ -321,6 +323,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
         let delete_dump_dir = options.delete_dump_dir;
         let delete_shadercache_dir = options.delete_shadercache_dir;
         let delete_depotcache_dir = options.delete_depotcache_dir;
+        let delete_orphaned_game_folders = options.delete_orphaned_game_folders;
         let delete_steam_appdata_dir = options.delete_steam_appdata_dir;
         let delete_valve_locallow_dir = options.delete_valve_locallow_dir;
         let delete_d3d_cache = options.delete_d3d_cache;
@@ -359,7 +362,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
 
         tasks.push(tokio::task::spawn_blocking(move || {
             if options.clean_steam || options.clean_aggressive {
-                match file_cleaner::clean_cache(dry_run) {
+                match file_cleaner::clean_cache(dry_run, delete_orphaned_game_folders) {
                     Ok(messages) => messages,
                     Err(e) => vec![format!("❌ Error cleaning Steam: {}", e)],
                 }
@@ -382,6 +385,7 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
                     delete_dump_dir,
                     delete_shadercache_dir,
                     delete_depotcache_dir,
+                    delete_orphaned_game_folders,
                     delete_steam_appdata_dir,
                     delete_valve_locallow_dir,
                     delete_d3d_cache,
@@ -512,4 +516,3 @@ pub async fn apply_hardware_profile(
 
     results
 }
-
