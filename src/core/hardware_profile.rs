@@ -1,7 +1,4 @@
 // src/core/hardware_profile.rs
-//
-// Hardware-ID Profile Manager
-// Ermöglicht das Speichern, Laden und Anwenden von Hardware-Profilen
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -9,36 +6,24 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-/// Ein Hardware-Profil enthält alle relevanten Hardware-IDs
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HardwareProfile {
-    /// Name des Profils (z.B. "Main Account Hardware", "Smurf Hardware")
     pub name: String,
-    /// Zeitpunkt der Erstellung
     pub created_at: String,
-    /// Machine GUID
     pub machine_guid: Option<String>,
-    /// Product ID
     pub product_id: Option<String>,
-    /// Computer Name
     pub computer_name: Option<String>,
-    /// Volume IDs für verschiedene Laufwerke (z.B. "C" -> "1234-5678")
     pub volume_ids: HashMap<String, String>,
-    /// MAC-Adressen für verschiedene Adapter (Adapter-Key -> MAC)
     pub mac_addresses: HashMap<String, String>,
 }
 
-/// Container für alle gespeicherten Profile
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProfileManager {
-    /// Liste aller Profile
     pub profiles: Vec<HardwareProfile>,
-    /// Name des aktuell aktiven Profils (falls vorhanden)
     pub active_profile: Option<String>,
 }
 
 impl ProfileManager {
-    /// Standardpfad für die Profildatei
     pub fn default_path() -> PathBuf {
         let app_data = std::env::var("APPDATA")
             .unwrap_or_else(|_| ".".to_string());
@@ -47,7 +32,6 @@ impl ProfileManager {
             .join("hardware_profiles.json")
     }
 
-    /// Lädt den ProfileManager aus der Standarddatei
     pub fn load() -> io::Result<Self> {
         let path = Self::default_path();
         if !path.exists() {
@@ -58,11 +42,9 @@ impl ProfileManager {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 
-    /// Speichert den ProfileManager in die Standarddatei
     pub fn save(&self) -> io::Result<()> {
         let path = Self::default_path();
         
-        // Erstelle Verzeichnis falls nicht vorhanden
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -72,14 +54,11 @@ impl ProfileManager {
         fs::write(&path, content)
     }
 
-    /// Fügt ein neues Profil hinzu oder aktualisiert ein bestehendes
     pub fn add_or_update_profile(&mut self, profile: HardwareProfile) {
-        // Entferne vorhandenes Profil mit gleichem Namen
         self.profiles.retain(|p| p.name != profile.name);
         self.profiles.push(profile);
     }
 
-    /// Entfernt ein Profil nach Namen
     pub fn remove_profile(&mut self, name: &str) {
         self.profiles.retain(|p| p.name != name);
         if self.active_profile.as_deref() == Some(name) {
@@ -87,19 +66,16 @@ impl ProfileManager {
         }
     }
 
-    /// Sucht ein Profil nach Namen
     pub fn get_profile(&self, name: &str) -> Option<&HardwareProfile> {
         self.profiles.iter().find(|p| p.name == name)
     }
 
-    /// Gibt alle Profilnamen zurück
     pub fn profile_names(&self) -> Vec<String> {
         self.profiles.iter().map(|p| p.name.clone()).collect()
     }
 }
 
 impl HardwareProfile {
-    /// Erstellt ein neues Profil mit dem angegebenen Namen
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -108,7 +84,6 @@ impl HardwareProfile {
         }
     }
 
-    /// Erstellt einen Snapshot der aktuellen System-Hardware-IDs
     #[cfg(windows)]
     pub fn snapshot_current(name: String) -> io::Result<Self> {
         use std::process::Command;
@@ -117,28 +92,24 @@ impl HardwareProfile {
 
         let mut profile = Self::new(name);
 
-        // Machine GUID
         if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey("SOFTWARE\\Microsoft\\Cryptography")
         {
             profile.machine_guid = hklm.get_value("MachineGuid").ok();
         }
 
-        // Product ID
         if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
         {
             profile.product_id = hklm.get_value("ProductId").ok();
         }
 
-        // Computer Name
         if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey("SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters")
         {
             profile.computer_name = hklm.get_value("Hostname").ok();
         }
 
-        // Volume ID für C:
         if let Ok(output) = Command::new("cmd").args(["/C", "vol C:"]).output() {
             let output_str = String::from_utf8_lossy(&output.stdout);
             if let Some(line) = output_str.lines().find(|l| l.contains("Volume Serial Number")) {
@@ -149,7 +120,6 @@ impl HardwareProfile {
             }
         }
 
-        // MAC-Adressen
         let adapters_key_path = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}";
         if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(adapters_key_path) {
             for res in hklm.enum_keys() {
@@ -161,7 +131,6 @@ impl HardwareProfile {
                     if let Ok(current_adapter_key) = RegKey::predef(HKEY_LOCAL_MACHINE)
                         .open_subkey(&current_adapter_path)
                     {
-                        // Prüfe ob es ein physischer Adapter ist
                         let driver_desc: Result<String, _> = current_adapter_key.get_value("DriverDesc");
                         if let Ok(desc) = driver_desc {
                             let lc_desc = desc.to_lowercase();
@@ -170,7 +139,6 @@ impl HardwareProfile {
                                 continue;
                             }
                             
-                            // Lese aktuelle MAC (NetworkAddress) oder Original-MAC
                             let mac: Option<String> = current_adapter_key
                                 .get_value("NetworkAddress")
                                 .ok()
@@ -194,7 +162,6 @@ impl HardwareProfile {
     }
 }
 
-/// Einfache Zeitstempel-Funktion ohne externe Dependency
 fn chrono_lite_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     
@@ -203,14 +170,12 @@ fn chrono_lite_now() -> String {
         .unwrap_or_default();
     
     let secs = duration.as_secs();
-    // Einfaches ISO-8601 ähnliches Format
     let days = secs / 86400;
     let remaining = secs % 86400;
     let hours = remaining / 3600;
     let minutes = (remaining % 3600) / 60;
     let seconds = remaining % 60;
     
-    // Berechne ungefähres Datum (seit 1970-01-01)
     let years = 1970 + days / 365;
     let day_of_year = days % 365;
     let month = day_of_year / 30 + 1;
