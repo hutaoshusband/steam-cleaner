@@ -159,7 +159,11 @@
     "clean_redist_directx": "Очистить установщики DirectX",
     "clean_redist_dotnet": "Очистить установщики .NET Framework",
     "clean_redist_vcredist": "Очистить распространяемые Visual C++",
-    "clean_redist_installers": "Очистить другие установщики/Поддержка (Агрессивно)"
+    "clean_redist_installers": "Очистить другие установщики/Поддержка (Агрессивно)",
+    "select_all": "Выбрать все",
+    "deselect_all": "Снять выделение",
+    "select_all_options": "Выбрать все параметры",
+    "deselect_all_options": "Снять выделение со всех параметров"
   },
   "redist": {
     "title": "Очистка распространяемых компонентов Steam",

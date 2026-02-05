@@ -159,7 +159,9 @@
     "clean_redist_directx": "清理DirectX安装程序",
     "clean_redist_dotnet": "清理.NET Framework安装程序",
     "clean_redist_vcredist": "清理Visual C++可再发行组件",
-    "clean_redist_installers": "清理其他安装程序/支持 (激进)"
+    "clean_redist_installers": "清理其他安装程序/支持 (激进)",
+    "select_all": "全选",
+    "deselect_all": "取消全选"
   },
   "redist": {
     "title": "Steam可再发行组件清理器",

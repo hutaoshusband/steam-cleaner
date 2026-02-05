@@ -159,7 +159,9 @@
     "clean_redist_directx": "Pulisci installer DirectX",
     "clean_redist_dotnet": "Pulisci installer .NET Framework",
     "clean_redist_vcredist": "Pulisci redistribuibili Visual C++",
-    "clean_redist_installers": "Pulisci altri installer/Supporto (Aggressivo)"
+    "clean_redist_installers": "Pulisci altri installer/Supporto (Aggressivo)",
+    "select_all": "Seleziona tutto",
+    "deselect_all": "Deseleziona tutto"
   },
   "redist": {
     "title": "Pulitore redistribuibili Steam",

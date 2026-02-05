@@ -286,6 +286,10 @@ pub struct CustomCleanTranslations {
     pub clean_redist_dotnet: String,
     pub clean_redist_vcredist: String,
     pub clean_redist_installers: String,
+    pub select_all: String,
+    pub deselect_all: String,
+    pub select_all_options: String,
+    pub deselect_all_options: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -548,6 +552,10 @@ fn default_translations() -> Translations {
             clean_redist_dotnet: "Clean .NET Framework Installers".to_string(),
             clean_redist_vcredist: "Clean Visual C++ Redistributables".to_string(),
             clean_redist_installers: "Clean Other Installers/Support (Aggressive)".to_string(),
+            select_all: "Select All".to_string(),
+            deselect_all: "Deselect All".to_string(),
+            select_all_options: "Select All Options".to_string(),
+            deselect_all_options: "Deselect All Options".to_string(),
         },
         redist: RedistTranslations {
             title: "Steam Redistributable Cleaner".to_string(),

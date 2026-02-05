@@ -159,7 +159,11 @@
     "clean_redist_directx": "DirectXインストーラーをクリーニング",
     "clean_redist_dotnet": ".NET Frameworkインストーラーをクリーニング",
     "clean_redist_vcredist": "Visual C++再頒布可能コンポーネントをクリーニング",
-    "clean_redist_installers": "その他のインストーラー/サポートをクリーニング (攻撃的)"
+    "clean_redist_installers": "その他のインストーラー/サポートをクリーニング (攻撃的)",
+    "select_all": "すべて選択",
+    "deselect_all": "すべて選択解除",
+    "select_all_options": "すべてのオプションを選択",
+    "deselect_all_options": "すべてのオプションを選択解除"
   },
   "redist": {
     "title": "Steam再頒布可能コンポーネントクリーナー",

@@ -159,7 +159,11 @@
     "clean_redist_directx": "Nettoyer les installateurs DirectX",
     "clean_redist_dotnet": "Nettoyer les installateurs .NET Framework",
     "clean_redist_vcredist": "Nettoyer les redistribuables Visual C++",
-    "clean_redist_installers": "Nettoyer les autres installateurs/Support (Agressif)"
+    "clean_redist_installers": "Nettoyer les autres installateurs/Support (Agressif)",
+    "select_all": "Tout sélectionner",
+    "deselect_all": "Tout désélectionner",
+    "select_all_options": "Sélectionner toutes les options",
+    "deselect_all_options": "Désélectionner toutes les options"
   },
   "redist": {
     "title": "Nettoyeur de redistribuables Steam",

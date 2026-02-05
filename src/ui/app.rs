@@ -179,6 +179,20 @@ pub enum Message {
     CustomCleanToggleRedistDotNet(bool),
     CustomCleanToggleRedistVCRedist(bool),
     CustomCleanToggleRedistInstallers(bool),
+    ToggleSelectAllProcesses,
+    ToggleSelectAllSystemIdSpoofing,
+    ToggleSelectAllRegistryGameTracking,
+    ToggleSelectAllRegistrySystemCaches,
+    ToggleSelectAllMacVolumeSpoofing,
+    ToggleSelectAllSteamLoginFiles,
+    ToggleSelectAllSteamDirectories,
+    ToggleSelectAllSystemCacheDirectories,
+    ToggleSelectAllWindowsExplorerCaches,
+    ToggleSelectAllRecentFiles,
+    ToggleSelectAllGpuCaches,
+    ToggleSelectAllDeepCleaning,
+    ToggleSelectAllRedistCleaning,
+    ToggleSelectAllCustomClean,
     ChangeLanguage(Language),
     OpenLanguageSelector,
     CloseLanguageSelector,
@@ -741,6 +755,305 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleRedistDotNet(value) => { self.custom_clean_options.clean_redist_dotnet = value; Command::none() }
             Message::CustomCleanToggleRedistVCRedist(value) => { self.custom_clean_options.clean_redist_vcredist = value; Command::none() }
             Message::CustomCleanToggleRedistInstallers(value) => { self.custom_clean_options.clean_redist_installers = value; Command::none() }
+            Message::ToggleSelectAllProcesses => {
+                let all_selected = self.custom_clean_options.kill_steam_processes && self.custom_clean_options.kill_explorer;
+                let new_value = !all_selected;
+                self.custom_clean_options.kill_steam_processes = new_value;
+                self.custom_clean_options.kill_explorer = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllSystemIdSpoofing => {
+                let all_selected = self.custom_clean_options.spoof_machine_guid && self.custom_clean_options.spoof_hw_profile_guid
+                    && self.custom_clean_options.spoof_product_id && self.custom_clean_options.spoof_registered_owner
+                    && self.custom_clean_options.spoof_install_date && self.custom_clean_options.spoof_computer_name;
+                let new_value = !all_selected;
+                self.custom_clean_options.spoof_machine_guid = new_value;
+                self.custom_clean_options.spoof_hw_profile_guid = new_value;
+                self.custom_clean_options.spoof_product_id = new_value;
+                self.custom_clean_options.spoof_registered_owner = new_value;
+                self.custom_clean_options.spoof_install_date = new_value;
+                self.custom_clean_options.spoof_computer_name = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllRegistryGameTracking => {
+                let all_selected = self.custom_clean_options.delete_steam_registry_hkcu && self.custom_clean_options.delete_valve_registry_hklm
+                    && self.custom_clean_options.delete_valve_registry_hku && self.custom_clean_options.delete_faceit_hkcu
+                    && self.custom_clean_options.delete_riot_hkcu && self.custom_clean_options.delete_esea_hkcu
+                    && self.custom_clean_options.delete_eac_hkcu && self.custom_clean_options.delete_battleye_hkcu
+                    && self.custom_clean_options.delete_startup_run;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_steam_registry_hkcu = new_value;
+                self.custom_clean_options.delete_valve_registry_hklm = new_value;
+                self.custom_clean_options.delete_valve_registry_hku = new_value;
+                self.custom_clean_options.delete_faceit_hkcu = new_value;
+                self.custom_clean_options.delete_riot_hkcu = new_value;
+                self.custom_clean_options.delete_esea_hkcu = new_value;
+                self.custom_clean_options.delete_eac_hkcu = new_value;
+                self.custom_clean_options.delete_battleye_hkcu = new_value;
+                self.custom_clean_options.delete_startup_run = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllRegistrySystemCaches => {
+                let all_selected = self.custom_clean_options.clean_app_compat_cache && self.custom_clean_options.clean_shim_cache
+                    && self.custom_clean_options.clean_app_compat_flags;
+                let new_value = !all_selected;
+                self.custom_clean_options.clean_app_compat_cache = new_value;
+                self.custom_clean_options.clean_shim_cache = new_value;
+                self.custom_clean_options.clean_app_compat_flags = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllMacVolumeSpoofing => {
+                let all_selected = self.custom_clean_options.spoof_mac_addresses && self.custom_clean_options.spoof_volume_c_drive;
+                let new_value = !all_selected;
+                self.custom_clean_options.spoof_mac_addresses = new_value;
+                self.custom_clean_options.spoof_volume_c_drive = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllSteamLoginFiles => {
+                let all_selected = self.custom_clean_options.delete_login_users_vdf && self.custom_clean_options.delete_config_vdf
+                    && self.custom_clean_options.delete_localconfig_vdf && self.custom_clean_options.delete_steam_appdata_vdf
+                    && self.custom_clean_options.delete_ssfn_files && self.custom_clean_options.delete_libraryfolders_vdf;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_login_users_vdf = new_value;
+                self.custom_clean_options.delete_config_vdf = new_value;
+                self.custom_clean_options.delete_localconfig_vdf = new_value;
+                self.custom_clean_options.delete_steam_appdata_vdf = new_value;
+                self.custom_clean_options.delete_ssfn_files = new_value;
+                self.custom_clean_options.delete_libraryfolders_vdf = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllSteamDirectories => {
+                let all_selected = self.custom_clean_options.delete_userdata_dir && self.custom_clean_options.delete_config_dir
+                    && self.custom_clean_options.delete_logs_dir && self.custom_clean_options.delete_appcache_dir
+                    && self.custom_clean_options.delete_dump_dir && self.custom_clean_options.delete_shadercache_dir
+                    && self.custom_clean_options.delete_depotcache_dir && self.custom_clean_options.delete_orphaned_game_folders;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_userdata_dir = new_value;
+                self.custom_clean_options.delete_config_dir = new_value;
+                self.custom_clean_options.delete_logs_dir = new_value;
+                self.custom_clean_options.delete_appcache_dir = new_value;
+                self.custom_clean_options.delete_dump_dir = new_value;
+                self.custom_clean_options.delete_shadercache_dir = new_value;
+                self.custom_clean_options.delete_depotcache_dir = new_value;
+                self.custom_clean_options.delete_orphaned_game_folders = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllSystemCacheDirectories => {
+                let all_selected = self.custom_clean_options.delete_steam_appdata_dir && self.custom_clean_options.delete_valve_locallow_dir
+                    && self.custom_clean_options.delete_d3d_cache && self.custom_clean_options.delete_local_temp
+                    && self.custom_clean_options.delete_local_low_temp && self.custom_clean_options.delete_user_temp
+                    && self.custom_clean_options.delete_windows_temp && self.custom_clean_options.delete_crash_dumps;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_steam_appdata_dir = new_value;
+                self.custom_clean_options.delete_valve_locallow_dir = new_value;
+                self.custom_clean_options.delete_d3d_cache = new_value;
+                self.custom_clean_options.delete_local_temp = new_value;
+                self.custom_clean_options.delete_local_low_temp = new_value;
+                self.custom_clean_options.delete_user_temp = new_value;
+                self.custom_clean_options.delete_windows_temp = new_value;
+                self.custom_clean_options.delete_crash_dumps = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllWindowsExplorerCaches => {
+                let all_selected = self.custom_clean_options.delete_web_cache && self.custom_clean_options.delete_inet_cache
+                    && self.custom_clean_options.delete_windows_caches && self.custom_clean_options.delete_windows_explorer;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_web_cache = new_value;
+                self.custom_clean_options.delete_inet_cache = new_value;
+                self.custom_clean_options.delete_windows_caches = new_value;
+                self.custom_clean_options.delete_windows_explorer = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllRecentFiles => {
+                let all_selected = self.custom_clean_options.delete_recent && self.custom_clean_options.delete_automatic_destinations
+                    && self.custom_clean_options.delete_custom_destinations && self.custom_clean_options.delete_tracing_dir;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_recent = new_value;
+                self.custom_clean_options.delete_automatic_destinations = new_value;
+                self.custom_clean_options.delete_custom_destinations = new_value;
+                self.custom_clean_options.delete_tracing_dir = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllGpuCaches => {
+                let new_value = !self.custom_clean_options.delete_nvidia_cache;
+                self.custom_clean_options.delete_nvidia_cache = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllDeepCleaning => {
+                let all_selected = self.custom_clean_options.delete_windows_prefetch && self.custom_clean_options.delete_my_games
+                    && self.custom_clean_options.delete_easyanticheat && self.custom_clean_options.delete_battleye
+                    && self.custom_clean_options.delete_faceit;
+                let new_value = !all_selected;
+                self.custom_clean_options.delete_windows_prefetch = new_value;
+                self.custom_clean_options.delete_my_games = new_value;
+                self.custom_clean_options.delete_easyanticheat = new_value;
+                self.custom_clean_options.delete_battleye = new_value;
+                self.custom_clean_options.delete_faceit = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllRedistCleaning => {
+                let all_selected = self.custom_clean_options.clean_redist_common && self.custom_clean_options.clean_redist_directx
+                    && self.custom_clean_options.clean_redist_dotnet && self.custom_clean_options.clean_redist_vcredist
+                    && self.custom_clean_options.clean_redist_installers;
+                let new_value = !all_selected;
+                self.custom_clean_options.clean_redist_common = new_value;
+                self.custom_clean_options.clean_redist_directx = new_value;
+                self.custom_clean_options.clean_redist_dotnet = new_value;
+                self.custom_clean_options.clean_redist_vcredist = new_value;
+                self.custom_clean_options.clean_redist_installers = new_value;
+                Command::none()
+            }
+            Message::ToggleSelectAllCustomClean => {
+                // Check if all options are selected
+                let all_options = [
+                    // Processes
+                    self.custom_clean_options.kill_steam_processes,
+                    self.custom_clean_options.kill_explorer,
+                    // System ID Spoofing
+                    self.custom_clean_options.spoof_machine_guid,
+                    self.custom_clean_options.spoof_hw_profile_guid,
+                    self.custom_clean_options.spoof_product_id,
+                    self.custom_clean_options.spoof_registered_owner,
+                    self.custom_clean_options.spoof_install_date,
+                    self.custom_clean_options.spoof_computer_name,
+                    // Registry Game Tracking
+                    self.custom_clean_options.delete_steam_registry_hkcu,
+                    self.custom_clean_options.delete_valve_registry_hklm,
+                    self.custom_clean_options.delete_valve_registry_hku,
+                    self.custom_clean_options.delete_faceit_hkcu,
+                    self.custom_clean_options.delete_riot_hkcu,
+                    self.custom_clean_options.delete_esea_hkcu,
+                    self.custom_clean_options.delete_eac_hkcu,
+                    self.custom_clean_options.delete_battleye_hkcu,
+                    self.custom_clean_options.delete_startup_run,
+                    // Registry System Caches
+                    self.custom_clean_options.clean_app_compat_cache,
+                    self.custom_clean_options.clean_shim_cache,
+                    self.custom_clean_options.clean_app_compat_flags,
+                    // MAC & Volume
+                    self.custom_clean_options.spoof_mac_addresses,
+                    self.custom_clean_options.spoof_volume_c_drive,
+                    // Steam Login Files
+                    self.custom_clean_options.delete_login_users_vdf,
+                    self.custom_clean_options.delete_config_vdf,
+                    self.custom_clean_options.delete_localconfig_vdf,
+                    self.custom_clean_options.delete_steam_appdata_vdf,
+                    self.custom_clean_options.delete_ssfn_files,
+                    self.custom_clean_options.delete_libraryfolders_vdf,
+                    // Steam Directories
+                    self.custom_clean_options.delete_userdata_dir,
+                    self.custom_clean_options.delete_config_dir,
+                    self.custom_clean_options.delete_logs_dir,
+                    self.custom_clean_options.delete_appcache_dir,
+                    self.custom_clean_options.delete_dump_dir,
+                    self.custom_clean_options.delete_shadercache_dir,
+                    self.custom_clean_options.delete_depotcache_dir,
+                    self.custom_clean_options.delete_orphaned_game_folders,
+                    // System Cache Directories
+                    self.custom_clean_options.delete_steam_appdata_dir,
+                    self.custom_clean_options.delete_valve_locallow_dir,
+                    self.custom_clean_options.delete_d3d_cache,
+                    self.custom_clean_options.delete_local_temp,
+                    self.custom_clean_options.delete_local_low_temp,
+                    self.custom_clean_options.delete_user_temp,
+                    self.custom_clean_options.delete_windows_temp,
+                    self.custom_clean_options.delete_crash_dumps,
+                    // Windows Explorer Caches
+                    self.custom_clean_options.delete_web_cache,
+                    self.custom_clean_options.delete_inet_cache,
+                    self.custom_clean_options.delete_windows_caches,
+                    self.custom_clean_options.delete_windows_explorer,
+                    // Recent Files
+                    self.custom_clean_options.delete_recent,
+                    self.custom_clean_options.delete_automatic_destinations,
+                    self.custom_clean_options.delete_custom_destinations,
+                    self.custom_clean_options.delete_tracing_dir,
+                    // GPU Caches
+                    self.custom_clean_options.delete_nvidia_cache,
+                    // Deep Cleaning
+                    self.custom_clean_options.delete_windows_prefetch,
+                    self.custom_clean_options.delete_my_games,
+                    self.custom_clean_options.delete_easyanticheat,
+                    self.custom_clean_options.delete_battleye,
+                    self.custom_clean_options.delete_faceit,
+                    // Redist
+                    self.custom_clean_options.clean_redist_common,
+                    self.custom_clean_options.clean_redist_directx,
+                    self.custom_clean_options.clean_redist_dotnet,
+                    self.custom_clean_options.clean_redist_vcredist,
+                    self.custom_clean_options.clean_redist_installers,
+                ];
+
+                let all_selected = all_options.iter().all(|&x| x);
+                let new_value = !all_selected;
+
+                // Apply new value to all options
+                self.custom_clean_options.kill_steam_processes = new_value;
+                self.custom_clean_options.kill_explorer = new_value;
+                self.custom_clean_options.spoof_machine_guid = new_value;
+                self.custom_clean_options.spoof_hw_profile_guid = new_value;
+                self.custom_clean_options.spoof_product_id = new_value;
+                self.custom_clean_options.spoof_registered_owner = new_value;
+                self.custom_clean_options.spoof_install_date = new_value;
+                self.custom_clean_options.spoof_computer_name = new_value;
+                self.custom_clean_options.delete_steam_registry_hkcu = new_value;
+                self.custom_clean_options.delete_valve_registry_hklm = new_value;
+                self.custom_clean_options.delete_valve_registry_hku = new_value;
+                self.custom_clean_options.delete_faceit_hkcu = new_value;
+                self.custom_clean_options.delete_riot_hkcu = new_value;
+                self.custom_clean_options.delete_esea_hkcu = new_value;
+                self.custom_clean_options.delete_eac_hkcu = new_value;
+                self.custom_clean_options.delete_battleye_hkcu = new_value;
+                self.custom_clean_options.delete_startup_run = new_value;
+                self.custom_clean_options.clean_app_compat_cache = new_value;
+                self.custom_clean_options.clean_shim_cache = new_value;
+                self.custom_clean_options.clean_app_compat_flags = new_value;
+                self.custom_clean_options.spoof_mac_addresses = new_value;
+                self.custom_clean_options.spoof_volume_c_drive = new_value;
+                self.custom_clean_options.delete_login_users_vdf = new_value;
+                self.custom_clean_options.delete_config_vdf = new_value;
+                self.custom_clean_options.delete_localconfig_vdf = new_value;
+                self.custom_clean_options.delete_steam_appdata_vdf = new_value;
+                self.custom_clean_options.delete_ssfn_files = new_value;
+                self.custom_clean_options.delete_libraryfolders_vdf = new_value;
+                self.custom_clean_options.delete_userdata_dir = new_value;
+                self.custom_clean_options.delete_config_dir = new_value;
+                self.custom_clean_options.delete_logs_dir = new_value;
+                self.custom_clean_options.delete_appcache_dir = new_value;
+                self.custom_clean_options.delete_dump_dir = new_value;
+                self.custom_clean_options.delete_shadercache_dir = new_value;
+                self.custom_clean_options.delete_depotcache_dir = new_value;
+                self.custom_clean_options.delete_orphaned_game_folders = new_value;
+                self.custom_clean_options.delete_steam_appdata_dir = new_value;
+                self.custom_clean_options.delete_valve_locallow_dir = new_value;
+                self.custom_clean_options.delete_d3d_cache = new_value;
+                self.custom_clean_options.delete_local_temp = new_value;
+                self.custom_clean_options.delete_local_low_temp = new_value;
+                self.custom_clean_options.delete_user_temp = new_value;
+                self.custom_clean_options.delete_windows_temp = new_value;
+                self.custom_clean_options.delete_crash_dumps = new_value;
+                self.custom_clean_options.delete_web_cache = new_value;
+                self.custom_clean_options.delete_inet_cache = new_value;
+                self.custom_clean_options.delete_windows_caches = new_value;
+                self.custom_clean_options.delete_windows_explorer = new_value;
+                self.custom_clean_options.delete_recent = new_value;
+                self.custom_clean_options.delete_automatic_destinations = new_value;
+                self.custom_clean_options.delete_custom_destinations = new_value;
+                self.custom_clean_options.delete_tracing_dir = new_value;
+                self.custom_clean_options.delete_nvidia_cache = new_value;
+                self.custom_clean_options.delete_windows_prefetch = new_value;
+                self.custom_clean_options.delete_my_games = new_value;
+                self.custom_clean_options.delete_easyanticheat = new_value;
+                self.custom_clean_options.delete_battleye = new_value;
+                self.custom_clean_options.delete_faceit = new_value;
+                self.custom_clean_options.clean_redist_common = new_value;
+                self.custom_clean_options.clean_redist_directx = new_value;
+                self.custom_clean_options.clean_redist_dotnet = new_value;
+                self.custom_clean_options.clean_redist_vcredist = new_value;
+                self.custom_clean_options.clean_redist_installers = new_value;
+
+                Command::none()
+            }
             Message::ExecuteCustomClean => {
                 if self.state == State::Idle {
                     if self.custom_clean_options.clean_aggressive {
@@ -773,7 +1086,6 @@ impl Application for CleanerApp {
                     Command::none()
                 }
             }
-
             Message::ChangeLanguage(lang) => {
                 self.current_language = lang;
                 self.translations = i18n::load_translations(lang);
@@ -1549,15 +1861,37 @@ impl CleanerApp {
                 .into()
         }
 
-        fn make_section<'a>(title: &'a str, checkboxes: Column<'a, Message>) -> Element<'a, Message> {
-            container(
+        fn make_section<'a>(title: &'a str, checkboxes: Column<'a, Message>, select_all_msg: Option<Message>, select_all_label: Option<&'a str>, colors: Option<style::CustomThemeColors>, font: Option<iced::Font>) -> Element<'a, Message> {
+            let select_all_btn = if let (Some(msg), Some(label)) = (select_all_msg, select_all_label) {
+                let btn = button(text(label).size(12).horizontal_alignment(iced::alignment::Horizontal::Center).font(font.unwrap_or(iced::Font::DEFAULT)))
+                    .padding(8)
+                    .width(Length::Fill)
+                    .on_press(msg)
+                    .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: colors })));
+                Some(column![btn].width(Length::Fill))
+            } else {
+                None
+            };
+
+            let content = if let Some(btn) = select_all_btn {
+                column![
+                    text(title).size(16).style(iced::Color::from_rgb(0.5, 0.7, 1.0)),
+                    Space::with_height(Length::Fixed(8.0)),
+                    btn,
+                    Space::with_height(Length::Fixed(8.0)),
+                    checkboxes
+                ]
+                .spacing(4)
+            } else {
                 column![
                     text(title).size(16).style(iced::Color::from_rgb(0.5, 0.7, 1.0)),
                     Space::with_height(Length::Fixed(8.0)),
                     checkboxes
                 ]
                 .spacing(4)
-            )
+            };
+
+            container(content)
             .padding(15)
             .width(Length::Fill)
             .style(iced::theme::Container::Custom(Box::new(style::OptionsBoxStyle { custom_colors: None })))
@@ -1571,12 +1905,21 @@ impl CleanerApp {
         .width(Length::Fill)
         .align_y(iced::alignment::Vertical::Center);
 
+        // Helper to determine select all label
+        let select_all_label = |all_selected: bool| -> &str {
+            if all_selected { &self.translations.custom_clean.deselect_all } else { &self.translations.custom_clean.select_all }
+        };
+
         let processes_section = make_section(
             &self.translations.custom_clean.processes,
             column![
                 make_checkbox(&self.translations.custom_clean.kill_steam_processes, self.custom_clean_options.kill_steam_processes, Message::CustomCleanToggleKillSteam, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.kill_explorer, self.custom_clean_options.kill_explorer, Message::CustomCleanToggleKillExplorer, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllProcesses),
+            Some(select_all_label(self.custom_clean_options.kill_steam_processes && self.custom_clean_options.kill_explorer)),
+            active_colors,
+            lang_font
         );
 
         let system_id_section = make_section(
@@ -1588,7 +1931,13 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.spoof_registered_owner, self.custom_clean_options.spoof_registered_owner, Message::CustomCleanToggleRegisteredOwner, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.spoof_install_date, self.custom_clean_options.spoof_install_date, Message::CustomCleanToggleInstallDate, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.spoof_computer_name, self.custom_clean_options.spoof_computer_name, Message::CustomCleanToggleComputerName, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllSystemIdSpoofing),
+            Some(select_all_label(self.custom_clean_options.spoof_machine_guid && self.custom_clean_options.spoof_hw_profile_guid
+                && self.custom_clean_options.spoof_product_id && self.custom_clean_options.spoof_registered_owner
+                && self.custom_clean_options.spoof_install_date && self.custom_clean_options.spoof_computer_name)),
+            active_colors,
+            lang_font
         );
 
         let game_tracking_section = make_section(
@@ -1603,7 +1952,15 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_eac_hkcu, self.custom_clean_options.delete_eac_hkcu, Message::CustomCleanToggleEacHkcu, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_battleye_hkcu, self.custom_clean_options.delete_battleye_hkcu, Message::CustomCleanToggleBattleyeHkcu, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_startup_run, self.custom_clean_options.delete_startup_run, Message::CustomCleanToggleStartupRun, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllRegistryGameTracking),
+            Some(select_all_label(self.custom_clean_options.delete_steam_registry_hkcu && self.custom_clean_options.delete_valve_registry_hklm
+                && self.custom_clean_options.delete_valve_registry_hku && self.custom_clean_options.delete_faceit_hkcu
+                && self.custom_clean_options.delete_riot_hkcu && self.custom_clean_options.delete_esea_hkcu
+                && self.custom_clean_options.delete_eac_hkcu && self.custom_clean_options.delete_battleye_hkcu
+                && self.custom_clean_options.delete_startup_run)),
+            active_colors,
+            lang_font
         );
 
         let registry_caches_section = make_section(
@@ -1612,7 +1969,12 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.clean_app_compat_cache, self.custom_clean_options.clean_app_compat_cache, Message::CustomCleanToggleAppCompatCache, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.clean_shim_cache, self.custom_clean_options.clean_shim_cache, Message::CustomCleanToggleShimCache, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.clean_app_compat_flags, self.custom_clean_options.clean_app_compat_flags, Message::CustomCleanToggleAppCompatFlags, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllRegistrySystemCaches),
+            Some(select_all_label(self.custom_clean_options.clean_app_compat_cache && self.custom_clean_options.clean_shim_cache
+                && self.custom_clean_options.clean_app_compat_flags)),
+            active_colors,
+            lang_font
         );
 
         let mac_volume_section = make_section(
@@ -1620,7 +1982,11 @@ impl CleanerApp {
             column![
                 make_checkbox(&self.translations.custom_clean.spoof_mac_addresses, self.custom_clean_options.spoof_mac_addresses, Message::CustomCleanToggleMacAddresses, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.spoof_volume_c_drive, self.custom_clean_options.spoof_volume_c_drive, Message::CustomCleanToggleVolumeCdrive, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllMacVolumeSpoofing),
+            Some(select_all_label(self.custom_clean_options.spoof_mac_addresses && self.custom_clean_options.spoof_volume_c_drive)),
+            active_colors,
+            lang_font
         );
 
         let steam_login_section = make_section(
@@ -1632,7 +1998,13 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_steam_appdata_vdf, self.custom_clean_options.delete_steam_appdata_vdf, Message::CustomCleanToggleSteamAppdataVdf, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_ssfn_files, self.custom_clean_options.delete_ssfn_files, Message::CustomCleanToggleSsfnFiles, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_libraryfolders_vdf, self.custom_clean_options.delete_libraryfolders_vdf, Message::CustomCleanToggleLibraryfoldersVdf, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllSteamLoginFiles),
+            Some(select_all_label(self.custom_clean_options.delete_login_users_vdf && self.custom_clean_options.delete_config_vdf
+                && self.custom_clean_options.delete_localconfig_vdf && self.custom_clean_options.delete_steam_appdata_vdf
+                && self.custom_clean_options.delete_ssfn_files && self.custom_clean_options.delete_libraryfolders_vdf)),
+            active_colors,
+            lang_font
         );
 
         let steam_dirs_section = make_section(
@@ -1646,7 +2018,14 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_shadercache_dir, self.custom_clean_options.delete_shadercache_dir, Message::CustomCleanToggleShadercacheDir, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_depotcache_dir, self.custom_clean_options.delete_depotcache_dir, Message::CustomCleanToggleDepotcacheDir, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_orphaned_game_folders, self.custom_clean_options.delete_orphaned_game_folders, Message::CustomCleanToggleOrphanedGameFolders, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllSteamDirectories),
+            Some(select_all_label(self.custom_clean_options.delete_userdata_dir && self.custom_clean_options.delete_config_dir
+                && self.custom_clean_options.delete_logs_dir && self.custom_clean_options.delete_appcache_dir
+                && self.custom_clean_options.delete_dump_dir && self.custom_clean_options.delete_shadercache_dir
+                && self.custom_clean_options.delete_depotcache_dir && self.custom_clean_options.delete_orphaned_game_folders)),
+            active_colors,
+            lang_font
         );
 
         let system_cache_section = make_section(
@@ -1660,7 +2039,14 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_user_temp, self.custom_clean_options.delete_user_temp, Message::CustomCleanToggleUserTemp, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_windows_temp, self.custom_clean_options.delete_windows_temp, Message::CustomCleanToggleWindowsTemp, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_crash_dumps, self.custom_clean_options.delete_crash_dumps, Message::CustomCleanToggleCrashDumps, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllSystemCacheDirectories),
+            Some(select_all_label(self.custom_clean_options.delete_steam_appdata_dir && self.custom_clean_options.delete_valve_locallow_dir
+                && self.custom_clean_options.delete_d3d_cache && self.custom_clean_options.delete_local_temp
+                && self.custom_clean_options.delete_local_low_temp && self.custom_clean_options.delete_user_temp
+                && self.custom_clean_options.delete_windows_temp && self.custom_clean_options.delete_crash_dumps)),
+            active_colors,
+            lang_font
         );
 
         let explorer_caches_section = make_section(
@@ -1670,7 +2056,12 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_inet_cache, self.custom_clean_options.delete_inet_cache, Message::CustomCleanToggleInetCache, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_windows_caches, self.custom_clean_options.delete_windows_caches, Message::CustomCleanToggleWindowsCaches, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_windows_explorer, self.custom_clean_options.delete_windows_explorer, Message::CustomCleanToggleWindowsExplorer, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllWindowsExplorerCaches),
+            Some(select_all_label(self.custom_clean_options.delete_web_cache && self.custom_clean_options.delete_inet_cache
+                && self.custom_clean_options.delete_windows_caches && self.custom_clean_options.delete_windows_explorer)),
+            active_colors,
+            lang_font
         );
 
         let recent_files_section = make_section(
@@ -1680,14 +2071,23 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_automatic_destinations, self.custom_clean_options.delete_automatic_destinations, Message::CustomCleanToggleAutomaticDestinations, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_custom_destinations, self.custom_clean_options.delete_custom_destinations, Message::CustomCleanToggleCustomDestinations, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_tracing_dir, self.custom_clean_options.delete_tracing_dir, Message::CustomCleanToggleTracingDir, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllRecentFiles),
+            Some(select_all_label(self.custom_clean_options.delete_recent && self.custom_clean_options.delete_automatic_destinations
+                && self.custom_clean_options.delete_custom_destinations && self.custom_clean_options.delete_tracing_dir)),
+            active_colors,
+            lang_font
         );
 
         let gpu_caches_section = make_section(
             &self.translations.custom_clean.gpu_caches,
             column![
                 make_checkbox(&self.translations.custom_clean.delete_nvidia_cache, self.custom_clean_options.delete_nvidia_cache, Message::CustomCleanToggleNvidiaCache, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllGpuCaches),
+            Some(select_all_label(self.custom_clean_options.delete_nvidia_cache)),
+            active_colors,
+            lang_font
         );
 
         let deep_cleaning_section = make_section(
@@ -1698,7 +2098,13 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.delete_easyanticheat, self.custom_clean_options.delete_easyanticheat, Message::CustomCleanToggleEasyanticheat, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_battleye, self.custom_clean_options.delete_battleye, Message::CustomCleanToggleBattleye, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.delete_faceit, self.custom_clean_options.delete_faceit, Message::CustomCleanToggleFaceit, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllDeepCleaning),
+            Some(select_all_label(self.custom_clean_options.delete_windows_prefetch && self.custom_clean_options.delete_my_games
+                && self.custom_clean_options.delete_easyanticheat && self.custom_clean_options.delete_battleye
+                && self.custom_clean_options.delete_faceit)),
+            active_colors,
+            lang_font
         );
 
         let redist_cleaning_section = make_section(
@@ -1709,7 +2115,13 @@ impl CleanerApp {
                 make_checkbox(&self.translations.custom_clean.clean_redist_dotnet, self.custom_clean_options.clean_redist_dotnet, Message::CustomCleanToggleRedistDotNet, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.clean_redist_vcredist, self.custom_clean_options.clean_redist_vcredist, Message::CustomCleanToggleRedistVCRedist, active_colors, lang_font),
                 make_checkbox(&self.translations.custom_clean.clean_redist_installers, self.custom_clean_options.clean_redist_installers, Message::CustomCleanToggleRedistInstallers, active_colors, lang_font),
-            ].spacing(10)
+            ].spacing(10),
+            Some(Message::ToggleSelectAllRedistCleaning),
+            Some(select_all_label(self.custom_clean_options.clean_redist_common && self.custom_clean_options.clean_redist_directx
+                && self.custom_clean_options.clean_redist_dotnet && self.custom_clean_options.clean_redist_vcredist
+                && self.custom_clean_options.clean_redist_installers)),
+            active_colors,
+            lang_font
         );
 
         let left_column = column![
@@ -1742,6 +2154,87 @@ impl CleanerApp {
             redist_cleaning_section,
         ].spacing(10).width(Length::FillPortion(1));
 
+        // Check if all options are selected for the global button
+        let all_options_selected = [
+            self.custom_clean_options.kill_steam_processes,
+            self.custom_clean_options.kill_explorer,
+            self.custom_clean_options.spoof_machine_guid,
+            self.custom_clean_options.spoof_hw_profile_guid,
+            self.custom_clean_options.spoof_product_id,
+            self.custom_clean_options.spoof_registered_owner,
+            self.custom_clean_options.spoof_install_date,
+            self.custom_clean_options.spoof_computer_name,
+            self.custom_clean_options.delete_steam_registry_hkcu,
+            self.custom_clean_options.delete_valve_registry_hklm,
+            self.custom_clean_options.delete_valve_registry_hku,
+            self.custom_clean_options.delete_faceit_hkcu,
+            self.custom_clean_options.delete_riot_hkcu,
+            self.custom_clean_options.delete_esea_hkcu,
+            self.custom_clean_options.delete_eac_hkcu,
+            self.custom_clean_options.delete_battleye_hkcu,
+            self.custom_clean_options.delete_startup_run,
+            self.custom_clean_options.clean_app_compat_cache,
+            self.custom_clean_options.clean_shim_cache,
+            self.custom_clean_options.clean_app_compat_flags,
+            self.custom_clean_options.spoof_mac_addresses,
+            self.custom_clean_options.spoof_volume_c_drive,
+            self.custom_clean_options.delete_login_users_vdf,
+            self.custom_clean_options.delete_config_vdf,
+            self.custom_clean_options.delete_localconfig_vdf,
+            self.custom_clean_options.delete_steam_appdata_vdf,
+            self.custom_clean_options.delete_ssfn_files,
+            self.custom_clean_options.delete_libraryfolders_vdf,
+            self.custom_clean_options.delete_userdata_dir,
+            self.custom_clean_options.delete_config_dir,
+            self.custom_clean_options.delete_logs_dir,
+            self.custom_clean_options.delete_appcache_dir,
+            self.custom_clean_options.delete_dump_dir,
+            self.custom_clean_options.delete_shadercache_dir,
+            self.custom_clean_options.delete_depotcache_dir,
+            self.custom_clean_options.delete_orphaned_game_folders,
+            self.custom_clean_options.delete_steam_appdata_dir,
+            self.custom_clean_options.delete_valve_locallow_dir,
+            self.custom_clean_options.delete_d3d_cache,
+            self.custom_clean_options.delete_local_temp,
+            self.custom_clean_options.delete_local_low_temp,
+            self.custom_clean_options.delete_user_temp,
+            self.custom_clean_options.delete_windows_temp,
+            self.custom_clean_options.delete_crash_dumps,
+            self.custom_clean_options.delete_web_cache,
+            self.custom_clean_options.delete_inet_cache,
+            self.custom_clean_options.delete_windows_caches,
+            self.custom_clean_options.delete_windows_explorer,
+            self.custom_clean_options.delete_recent,
+            self.custom_clean_options.delete_automatic_destinations,
+            self.custom_clean_options.delete_custom_destinations,
+            self.custom_clean_options.delete_tracing_dir,
+            self.custom_clean_options.delete_nvidia_cache,
+            self.custom_clean_options.delete_windows_prefetch,
+            self.custom_clean_options.delete_my_games,
+            self.custom_clean_options.delete_easyanticheat,
+            self.custom_clean_options.delete_battleye,
+            self.custom_clean_options.delete_faceit,
+            self.custom_clean_options.clean_redist_common,
+            self.custom_clean_options.clean_redist_directx,
+            self.custom_clean_options.clean_redist_dotnet,
+            self.custom_clean_options.clean_redist_vcredist,
+            self.custom_clean_options.clean_redist_installers,
+        ].iter().all(|&x| x);
+
+        let global_select_all_label = if all_options_selected {
+            &self.translations.custom_clean.deselect_all_options
+        } else {
+            &self.translations.custom_clean.select_all_options
+        };
+
+        let global_select_all_button = button(
+            text(global_select_all_label).size(15).horizontal_alignment(iced::alignment::Horizontal::Center).font(lang_font.unwrap_or(iced::Font::DEFAULT))
+        )
+            .padding(12)
+            .width(Length::Fixed(300.0))
+            .on_press(Message::ToggleSelectAllCustomClean)
+            .style(iced::theme::Button::Custom(Box::new(style::PrimaryButtonStyle { custom_colors: active_colors })));
+
         let (button_text_str, on_press_message) = match self.state {
             State::Idle => (&self.translations.custom_clean.execute_custom_clean, Some(Message::ExecuteCustomClean)),
             State::Cleaning => (&self.translations.custom_clean.cleaning_in_progress, None),
@@ -1766,6 +2259,8 @@ impl CleanerApp {
 
         let main_content = column![
             header,
+            Space::with_height(Length::Fixed(10.0)),
+            container(global_select_all_button).center_x().width(Length::Fill),
             Space::with_height(Length::Fixed(15.0)),
             container(
                 scrollable(

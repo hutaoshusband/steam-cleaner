@@ -159,7 +159,11 @@
     "clean_redist_directx": "DirectX-Installer bereinigen",
     "clean_redist_dotnet": ".NET Framework-Installer bereinigen",
     "clean_redist_vcredist": "Visual C++ Redistributables bereinigen",
-    "clean_redist_installers": "Andere Installer/Support bereinigen (Aggressiv)"
+    "clean_redist_installers": "Andere Installer/Support bereinigen (Aggressiv)",
+    "select_all": "Alle auswählen",
+    "deselect_all": "Alle abwählen",
+    "select_all_options": "Alle Optionen auswählen",
+    "deselect_all_options": "Alle Optionen abwählen"
   },
   "redist": {
     "title": "Steam Redistributable Cleaner",

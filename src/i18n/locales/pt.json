@@ -159,7 +159,11 @@
     "clean_redist_directx": "Limpar instaladores DirectX",
     "clean_redist_dotnet": "Limpar instaladores .NET Framework",
     "clean_redist_vcredist": "Limpar redistribuíveis Visual C++",
-    "clean_redist_installers": "Limpar outros instaladores/Suporte (Agressivo)"
+    "clean_redist_installers": "Limpar outros instaladores/Suporte (Agressivo)",
+    "select_all": "Selecionar tudo",
+    "deselect_all": "Desmarcar tudo",
+    "select_all_options": "Selecionar todas as opções",
+    "deselect_all_options": "Desmarcar todas as opções"
   },
   "redist": {
     "title": "Limpar redistribuíveis do Steam",
