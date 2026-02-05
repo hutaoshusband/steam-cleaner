@@ -1,16 +1,13 @@
 // src/core/backup.rs
 
 use std::fs::File;
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use zip::write::{FileOptions, ZipWriter};
 use zip::CompressionMethod;
 
 fn find_steam_root() -> Option<PathBuf> {
-    let possible_paths = [
-        "C:\\Program Files (x86)\\Steam",
-        "C:\\Program Files\\Steam",
-    ];
+    let possible_paths = ["C:\\Program Files (x86)\\Steam", "C:\\Program Files\\Steam"];
 
     for path in possible_paths.iter() {
         let path = PathBuf::from(path);
@@ -90,9 +87,9 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::io::Cursor;
     use zip::ZipArchive;
-    use std::fs;
 
     #[test]
     fn test_add_dir_to_zip_ignores_base_in_zip() {
@@ -102,7 +99,7 @@ mod tests {
             fs::remove_dir_all(&temp_dir).unwrap();
         }
         fs::create_dir_all(&temp_dir).unwrap();
-        
+
         let source_dir = temp_dir.join("source_data");
         fs::create_dir(&source_dir).unwrap();
         fs::write(source_dir.join("test_file.txt"), "content").unwrap();
@@ -113,24 +110,30 @@ mod tests {
 
         // Execute
         let result = add_dir_to_zip(&mut zip, &source_dir, "target_data", options);
-        
+
         assert!(result.is_ok());
         let cursor = zip.finish().unwrap();
         let buffer = cursor.into_inner();
 
         // Verify
         let mut archive = ZipArchive::new(Cursor::new(buffer)).unwrap();
-        
+
         let file_names: Vec<_> = archive.file_names().map(|s| s.to_string()).collect();
-        println!("Files in zip: {:?}", file_names);
-        
+
         let found_target = file_names.iter().any(|n| n.starts_with("target_data"));
         let found_source = file_names.iter().any(|n| n.starts_with("source_data"));
 
         // Cleanup
         fs::remove_dir_all(&temp_dir).unwrap();
 
-        assert!(found_target, "Bug reproduced: 'target_data' prefix not found in zip. Found: {:?}", file_names);
-        assert!(!found_source, "Bug reproduced: 'source_data' prefix found in zip, should have been renamed.");
+        assert!(
+            found_target,
+            "Bug reproduced: 'target_data' prefix not found in zip. Found: {:?}",
+            file_names
+        );
+        assert!(
+            !found_source,
+            "Bug reproduced: 'source_data' prefix found in zip, should have been renamed."
+        );
     }
 }

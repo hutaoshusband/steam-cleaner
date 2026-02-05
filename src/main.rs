@@ -49,6 +49,7 @@
 
 mod core;
 mod ui;
+mod i18n;
 
 use iced::{Application, Settings};
 

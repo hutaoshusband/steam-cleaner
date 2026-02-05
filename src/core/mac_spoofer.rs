@@ -1,7 +1,7 @@
 // src/core/mac_spoofer.rs
 
-use std::process::Command;
 use rand::Rng;
+use std::process::Command;
 use winreg::enums::*;
 use winreg::RegKey;
 
@@ -12,15 +12,17 @@ fn generate_random_mac() -> String {
     for i in 1..6 {
         mac_bytes[i] = rng.gen_range(0x00..=0xFF);
     }
-    format!("{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}", 
-            mac_bytes[0], mac_bytes[1], mac_bytes[2], 
-            mac_bytes[3], mac_bytes[4], mac_bytes[5])
+    format!(
+        "{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
+        mac_bytes[0], mac_bytes[1], mac_bytes[2], mac_bytes[3], mac_bytes[4], mac_bytes[5]
+    )
 }
 
 pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
     let mut logs = Vec::new();
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let adapters_key_path = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}";
+    let adapters_key_path =
+        r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}";
     let adapters_key = hklm.open_subkey(adapters_key_path)?;
 
     let mut spoofed_count = 0;
@@ -43,13 +45,25 @@ pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
         };
 
         let lc_desc = driver_desc.to_lowercase();
-        let blacklist = ["wan miniport", "tunnel", "ppoe", "loopback", "ras async", "virtual", "teredo", "pseudo"];
+        let blacklist = [
+            "wan miniport",
+            "tunnel",
+            "ppoe",
+            "loopback",
+            "ras async",
+            "virtual",
+            "teredo",
+            "pseudo",
+        ];
         if blacklist.iter().any(|b| lc_desc.contains(b)) {
             logs.push(format!("[–] Skipped: '{}'", driver_desc));
             continue;
         }
 
-        logs.push(format!("[*] Adapter detected: '{}' (Key: {})", driver_desc, sub_key_name));
+        logs.push(format!(
+            "[*] Adapter detected: '{}' (Key: {})",
+            driver_desc, sub_key_name
+        ));
 
         let new_mac = generate_random_mac();
         logs.push(format!("    → New MAC: {}", new_mac));
@@ -64,9 +78,18 @@ pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
             sub_key_name
         );
 
-        let reg_result = Command::new("reg")
-            .args(["add", &adapter_full_path, "/v", "NetworkAddress", "/d", &new_mac, "/f"])
-            .status();
+        let reg_args = [
+            "add",
+            &adapter_full_path,
+            "/v",
+            "NetworkAddress",
+            "/d",
+            &new_mac,
+            "/f",
+        ];
+        logs.push(format!("[System] Executing: reg {}", reg_args.join(" ")));
+
+        let reg_result = Command::new("reg").args(reg_args).status();
 
         match reg_result {
             Ok(status) if status.success() => {
@@ -89,23 +112,32 @@ pub fn spoof_mac_all(dry_run: bool) -> std::io::Result<Vec<String>> {
     if spoofed_count == 0 {
         logs.push("[-] No suitable adapters found or changed.".to_string());
     } else {
-        logs.push(format!("[✓] MAC spoofing complete. {} adapters changed. Reboot needed!", spoofed_count));
+        logs.push(format!(
+            "[✓] MAC spoofing complete. {} adapters changed. Reboot needed!",
+            spoofed_count
+        ));
     }
 
     Ok(logs)
 }
 
-/// Wendet spezifische MAC-Adressen aus einem Profil an
-/// adapter_macs: HashMap von Adapter-Key (z.B. "0001") zu MAC (z.B. "AABBCCDDEEFF")
-pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, String>, dry_run: bool) -> std::io::Result<Vec<String>> {
+/// Applies specific MAC addresses from a profile
+/// adapter_macs: HashMap from adapter key (e.g. "0001") to MAC (e.g. "AABBCCDDEEFF")
+pub fn spoof_mac_from_profile(
+    adapter_macs: &std::collections::HashMap<String, String>,
+    dry_run: bool,
+) -> std::io::Result<Vec<String>> {
     let mut logs = Vec::new();
-    
+
     if adapter_macs.is_empty() {
         logs.push("[-] No MAC addresses in profile to apply.".to_string());
         return Ok(logs);
     }
 
-    logs.push(format!("[*] Applying {} MAC addresses from profile...", adapter_macs.len()));
+    logs.push(format!(
+        "[*] Applying {} MAC addresses from profile...",
+        adapter_macs.len()
+    ));
 
     let mut applied_count = 0;
 
@@ -115,7 +147,10 @@ pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, S
             adapter_key
         );
 
-        logs.push(format!("[*] Setting adapter {} → MAC: {}", adapter_key, new_mac));
+        logs.push(format!(
+            "[*] Setting adapter {} → MAC: {}",
+            adapter_key, new_mac
+        ));
 
         if dry_run {
             logs.push(format!("    [DRY-RUN] Would set MAC to {}", new_mac));
@@ -123,13 +158,25 @@ pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, S
             continue;
         }
 
-        let reg_result = Command::new("reg")
-            .args(["add", &adapter_full_path, "/v", "NetworkAddress", "/d", new_mac, "/f"])
-            .status();
+        let reg_args = [
+            "add",
+            &adapter_full_path,
+            "/v",
+            "NetworkAddress",
+            "/d",
+            new_mac,
+            "/f",
+        ];
+        logs.push(format!("[System] Executing: reg {}", reg_args.join(" ")));
+
+        let reg_result = Command::new("reg").args(reg_args).status();
 
         match reg_result {
             Ok(status) if status.success() => {
-                logs.push(format!("[+] Successfully set MAC for adapter {}", adapter_key));
+                logs.push(format!(
+                    "[+] Successfully set MAC for adapter {}",
+                    adapter_key
+                ));
                 applied_count += 1;
             }
             Ok(status) => {
@@ -140,13 +187,19 @@ pub fn spoof_mac_from_profile(adapter_macs: &std::collections::HashMap<String, S
                 ));
             }
             Err(e) => {
-                logs.push(format!("[-] Execution error for adapter {}: {}", adapter_key, e));
+                logs.push(format!(
+                    "[-] Execution error for adapter {}: {}",
+                    adapter_key, e
+                ));
             }
         }
     }
 
     if applied_count > 0 {
-        logs.push(format!("[✓] Profile MAC application complete. {} adapters updated. Reboot needed!", applied_count));
+        logs.push(format!(
+            "[✓] Profile MAC application complete. {} adapters updated. Reboot needed!",
+            applied_count
+        ));
     }
 
     Ok(logs)
