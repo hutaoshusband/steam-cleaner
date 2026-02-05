@@ -5,8 +5,10 @@ use winreg::enums::*;
 use winreg::RegKey;
 
 pub fn spoof_hkcu(dry_run: bool) -> io::Result<Vec<String>> {
-    spoof_hkcu_detailed(dry_run, true, true, true, true, true, true, &mut Vec::new())
-        .map(|_| vec!["[✓] HKCU cleanup complete.".to_string()])
+    let mut logs = Vec::new();
+    spoof_hkcu_detailed(dry_run, true, true, true, true, true, true, &mut logs)?;
+    logs.push("[✓] HKCU cleanup complete.".to_string());
+    Ok(logs)
 }
 
 pub fn spoof_hkcu_detailed(
@@ -19,10 +21,9 @@ pub fn spoof_hkcu_detailed(
     delete_run: bool,
     logs: &mut Vec<String>,
 ) -> io::Result<()> {
-    let mut logs = Vec::new();
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
 
-    let suspicious_keys: Vec<&str> = vec![
+    let _suspicious_keys: Vec<&str> = vec![
         "Software\\FaceIt",
         "Software\\Faceit Ltd",
         "Software\\Riot Games",

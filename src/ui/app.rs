@@ -178,6 +178,7 @@ pub enum Message {
     OpenLanguageSelector,
     CloseLanguageSelector,
     RainbowTick(std::time::Instant),
+    LogMessage(String),
 }
 
 impl Application for CleanerApp {
@@ -349,11 +350,25 @@ impl Application for CleanerApp {
 
                     self.state = State::Cleaning;
                     self.log_messages = vec![self.translations.common.starting_cleaning.clone()];
-                    Command::perform(run_all_selected(self.options), Message::CleaningFinished)
+                    let options = self.options;
+                    
+                    let (mut tx, rx) = iced::futures::channel::mpsc::unbounded();
+                    tokio::spawn(async move {
+                        let tx_log = tx.clone();
+                        let results = run_all_selected(options, move |log| {
+                            let _ = tx_log.unbounded_send(Message::LogMessage(log));
+                        }).await;
+                        let _ = tx.unbounded_send(Message::CleaningFinished(results));
+                    });
+
+
+                    return Command::run(rx, |msg| msg);
                 } else {
                     Command::none()
                 }
             }
+
+
             Message::CleaningFinished(results) => {
                 self.state = State::Idle;
                 self.log_messages = results;
@@ -436,10 +451,15 @@ impl Application for CleanerApp {
                         let profile_clone = profile.clone();
                         let dry_run = self.options.dry_run;
 
-                        return Command::perform(
-                            apply_hardware_profile(profile_clone, dry_run),
-                            Message::ProfileApplied,
-                        );
+                        let (mut tx, rx) = iced::futures::channel::mpsc::unbounded();
+                        tokio::spawn(async move {
+                            let tx_log = tx.clone();
+                            let results = apply_hardware_profile(profile_clone, dry_run, move |log| {
+                                let _ = tx_log.unbounded_send(Message::LogMessage(log));
+                            }).await;
+                            let _ = tx.unbounded_send(Message::ProfileApplied(results));
+                        });
+                        return Command::run(rx, |msg| msg);
                     } else {
                         self.profile_state.status_message = Some(self.translations.common.profile_not_found.clone());
                     }
@@ -448,6 +468,7 @@ impl Application for CleanerApp {
                 }
                 Command::none()
             }
+
             Message::ProfileApplied(results) => {
                 self.profile_state.is_applying = false;
                 self.log_messages = results;
@@ -654,10 +675,10 @@ impl Application for CleanerApp {
             Message::CustomCleanToggleMacAddresses(value) => { self.custom_clean_options.spoof_mac_addresses = value; Command::none() }
             Message::CustomCleanToggleVolumeCdrive(value) => { self.custom_clean_options.spoof_volume_c_drive = value; Command::none() }
             Message::CustomCleanToggleLoginUsersVdf(value) => { self.custom_clean_options.delete_login_users_vdf = value; Command::none() }
-            Message::CustomCleanToggleLoginUsersVdf(value) => { self.custom_clean_options.delete_login_users_vdf = value; Command::none() }
             Message::CustomCleanToggleConfigVdf(value) => { self.custom_clean_options.delete_config_vdf = value; Command::none() }
             Message::CustomCleanToggleLocalconfigVdf(value) => { self.custom_clean_options.delete_localconfig_vdf = value; Command::none() }
             Message::CustomCleanToggleSteamAppdataVdf(value) => { self.custom_clean_options.delete_steam_appdata_vdf = value; Command::none() }
+
             Message::CustomCleanToggleSsfnFiles(value) => { self.custom_clean_options.delete_ssfn_files = value; Command::none() }
             Message::CustomCleanToggleLibraryfoldersVdf(value) => { self.custom_clean_options.delete_libraryfolders_vdf = value; Command::none() }
             Message::CustomCleanToggleUserdataDir(value) => { self.custom_clean_options.delete_userdata_dir = value; Command::none() }
@@ -723,11 +744,21 @@ impl Application for CleanerApp {
                     self.state = State::Cleaning;
                     self.log_messages = vec![self.translations.common.starting_custom_cleaning.clone()];
                     let options = self.custom_clean_options;
-                    Command::perform(run_all_selected(options), Message::CleaningFinished)
+
+                    let (mut tx, rx) = iced::futures::channel::mpsc::unbounded();
+                    tokio::spawn(async move {
+                        let tx_log = tx.clone();
+                        let results = run_all_selected(options, move |log| {
+                            let _ = tx_log.unbounded_send(Message::LogMessage(log));
+                        }).await;
+                        let _ = tx.unbounded_send(Message::CleaningFinished(results));
+                    });
+                    return Command::run(rx, |msg| msg);
                 } else {
                     Command::none()
                 }
             }
+
             Message::ChangeLanguage(lang) => {
                 self.current_language = lang;
                 self.translations = i18n::load_translations(lang);
@@ -749,8 +780,13 @@ impl Application for CleanerApp {
                 }
                 Command::none()
             }
+            Message::LogMessage(log) => {
+                self.log_messages.push(log);
+                Command::none()
+            }
         }
     }
+
 
     fn subscription(&self) -> Subscription<Message> {
         time::every(Duration::from_millis(16)).map(Message::RainbowTick)

@@ -110,9 +110,10 @@ pub struct CleaningOptions {
     pub kill_explorer: bool,
 }
 
-pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
+pub async fn run_all_selected(options: CleaningOptions, on_log: impl Fn(String) + Send + Sync + 'static) -> Vec<String> {
     let mut results = Vec::new();
     let dry_run = options.dry_run;
+    let on_log = std::sync::Arc::new(on_log);
 
     // Helper to check if any granular option is set
     let has_granular_options = || {
@@ -155,274 +156,221 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     };
 
     if dry_run {
-        results.push("--- SIMULATION MODE (DRY RUN) ---".to_string());
+        let msg = "--- SIMULATION MODE (DRY RUN) ---".to_string();
+        on_log(msg.clone());
+        results.push(msg);
     }
-    println!("Starting asynchronous cleaning with options: {:?}", options);
+    let start_msg = format!("[*] Starting asynchronous cleaning with options: {:?}", options);
+    on_log(start_msg.clone());
+    results.push(start_msg);
 
     // Run all blocking operations in parallel using spawn_blocking
     let mut tasks = Vec::new();
 
     // Legacy support - if legacy options are set, enable all granular options in that category
     if options.spoof_system_ids {
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             let mut logs = Vec::new();
             match registry_cleaner::clean_registry(dry_run) {
-                Ok(messages) => logs.extend(messages),
-                Err(e) => logs.push(format!("❌ Error spoofing System IDs: {}", e)),
+                Ok(messages) => {
+                    for m in messages {
+                        on_log_inner(m.clone());
+                        logs.push(m);
+                    }
+                }
+                Err(e) => {
+                    let m = format!("❌ Error spoofing System IDs: {}", e);
+                    on_log_inner(m.clone());
+                    logs.push(m);
+                }
             }
             match sid_spoofer::spoof_hkcu(dry_run) {
-                Ok(messages) => logs.extend(messages),
-                Err(e) => logs.push(format!("❌ Error spoofing HKCU keys: {}", e)),
+                Ok(messages) => {
+                    for m in messages {
+                        on_log_inner(m.clone());
+                        logs.push(m);
+                    }
+                }
+                Err(e) => {
+                    let m = format!("❌ Error spoofing HKCU keys: {}", e);
+                    on_log_inner(m.clone());
+                    logs.push(m);
+                }
             }
             logs
         }));
     } else if has_granular_options() {
         // Granular registry spoofing
         let dry_run = dry_run;
-        let spoof_machine_guid = options.spoof_machine_guid;
-        let spoof_hw_profile_guid = options.spoof_hw_profile_guid;
-        let spoof_product_id = options.spoof_product_id;
-        let spoof_registered_owner = options.spoof_registered_owner;
-        let spoof_install_date = options.spoof_install_date;
-        let spoof_computer_name = options.spoof_computer_name;
-        let delete_steam_registry_hkcu = options.delete_steam_registry_hkcu;
-        let spoof_machine_guid_bool = spoof_machine_guid;
-        let spoof_hw_profile_guid_bool = spoof_hw_profile_guid;
-        let spoof_product_id_bool = spoof_product_id;
-        let spoof_registered_owner_bool = spoof_registered_owner;
-        let spoof_install_date_bool = spoof_install_date;
-        let spoof_computer_name_bool = spoof_computer_name;
-        let delete_steam_registry_hkcu_bool = delete_steam_registry_hkcu;
+        let options = options;
+        let on_log_inner = on_log.clone();
 
         tasks.push(tokio::task::spawn_blocking(move || {
             let mut logs = Vec::new();
-            if spoof_machine_guid_bool {
-                match registry_cleaner::spoof_machine_guid(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing MachineGuid: {}", e)),
+            let mut run_action = |name: &str, action: fn(bool, &mut Vec<String>) -> std::io::Result<()>| {
+                let mut action_logs = Vec::new();
+                match action(dry_run, &mut action_logs) {
+                    Ok(_) => {
+                        for m in action_logs {
+                            on_log_inner(m.clone());
+                            logs.push(m);
+                        }
+                    }
+                    Err(e) => {
+                        let m = format!("❌ Error spoofing {}: {}", name, e);
+                        on_log_inner(m.clone());
+                        logs.push(m);
+                    }
                 }
-            }
-            if spoof_hw_profile_guid_bool {
-                match registry_cleaner::spoof_hw_profile_guid(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing HwProfileGuid: {}", e)),
-                }
-            }
-            if spoof_product_id_bool {
-                match registry_cleaner::spoof_windows_nt_info(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing Windows NT info: {}", e)),
-                }
-            }
-            if spoof_registered_owner_bool {
-                // Part of spoof_windows_nt_info
-                match registry_cleaner::spoof_registered_owner(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing registered owner: {}", e)),
-                }
-            }
-            if spoof_install_date_bool {
-                // Part of spoof_windows_nt_info
-                match registry_cleaner::spoof_install_date(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing install date: {}", e)),
-                }
-            }
-            if spoof_computer_name_bool {
-                match registry_cleaner::spoof_computer_name(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error spoofing computer name: {}", e)),
-                }
-            }
-            if delete_steam_registry_hkcu_bool {
-                match registry_cleaner::delete_steam_registry(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error deleting Steam registry: {}", e)),
-                }
-            }
+            };
+
+            if options.spoof_machine_guid { run_action("MachineGuid", registry_cleaner::spoof_machine_guid); }
+            if options.spoof_hw_profile_guid { run_action("HwProfileGuid", registry_cleaner::spoof_hw_profile_guid); }
+            if options.spoof_product_id { run_action("Windows NT info", registry_cleaner::spoof_windows_nt_info); }
+            if options.spoof_registered_owner { run_action("registered owner", registry_cleaner::spoof_registered_owner); }
+            if options.spoof_install_date { run_action("install date", registry_cleaner::spoof_install_date); }
+            if options.spoof_computer_name { run_action("computer name", registry_cleaner::spoof_computer_name); }
+            if options.delete_steam_registry_hkcu { run_action("Steam registry", registry_cleaner::delete_steam_registry); }
             logs
         }));
 
         // Granular game registry deletion
-        let dry_run = dry_run;
-        let delete_valve_registry_hklm = options.delete_valve_registry_hklm;
-        let delete_valve_registry_hku = options.delete_valve_registry_hku;
-        let delete_faceit_hkcu = options.delete_faceit_hkcu;
-        let delete_riot_hkcu = options.delete_riot_hkcu;
-        let delete_esea_hkcu = options.delete_esea_hkcu;
-        let delete_eac_hkcu = options.delete_eac_hkcu;
-        let delete_battleye_hkcu = options.delete_battleye_hkcu;
-        let delete_startup_run = options.delete_startup_run;
-        let clean_app_compat_cache = options.clean_app_compat_cache;
-        let clean_shim_cache = options.clean_shim_cache;
-        let clean_app_compat_flags = options.clean_app_compat_flags;
-
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             let mut logs = Vec::new();
-            if delete_valve_registry_hklm || delete_valve_registry_hku {
-                match registry_cleaner::delete_more_valve_keys(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error deleting Valve keys: {}", e)),
+            let mut action_logs = Vec::new();
+            if options.delete_valve_registry_hklm || options.delete_valve_registry_hku {
+                match registry_cleaner::delete_more_valve_keys(dry_run, &mut action_logs) {
+                    Ok(_) => {}
+                    Err(e) => action_logs.push(format!("❌ Error deleting Valve keys: {}", e)),
                 }
             }
-            if clean_app_compat_cache || clean_shim_cache || clean_app_compat_flags {
-                match registry_cleaner::clean_system_caches(dry_run, &mut logs) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error cleaning system caches: {}", e)),
+            if options.clean_app_compat_cache || options.clean_shim_cache || options.clean_app_compat_flags {
+                match registry_cleaner::clean_system_caches(dry_run, &mut action_logs) {
+                    Ok(_) => {}
+                    Err(e) => action_logs.push(format!("❌ Error cleaning system caches: {}", e)),
                 }
             }
-            if delete_faceit_hkcu || delete_riot_hkcu || delete_esea_hkcu ||
-               delete_eac_hkcu || delete_battleye_hkcu || delete_startup_run {
+            if options.delete_faceit_hkcu || options.delete_riot_hkcu || options.delete_esea_hkcu ||
+               options.delete_eac_hkcu || options.delete_battleye_hkcu || options.delete_startup_run {
                 match sid_spoofer::spoof_hkcu_detailed(
-                    dry_run, delete_faceit_hkcu, delete_riot_hkcu,
-                    delete_esea_hkcu, delete_eac_hkcu, delete_battleye_hkcu,
-                    delete_startup_run, &mut logs
+                    dry_run, options.delete_faceit_hkcu, options.delete_riot_hkcu,
+                    options.delete_esea_hkcu, options.delete_eac_hkcu, options.delete_battleye_hkcu,
+                    options.delete_startup_run, &mut action_logs
                 ) {
-                    Ok(_) => {},
-                    Err(e) => logs.push(format!("❌ Error deleting HKCU keys: {}", e)),
+                    Ok(_) => {}
+                    Err(e) => action_logs.push(format!("❌ Error deleting HKCU keys: {}", e)),
                 }
+            }
+            for m in action_logs {
+                on_log_inner(m.clone());
+                logs.push(m);
             }
             logs
         }));
     }
 
     if options.spoof_mac || options.spoof_mac_addresses {
-        let dry_run = dry_run;
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             match mac_spoofer::spoof_mac_all(dry_run) {
-                Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error spoofing MAC addresses: {}", e)],
+                Ok(messages) => {
+                    for m in &messages { on_log_inner(m.clone()); }
+                    messages
+                }
+                Err(e) => {
+                    let m = format!("❌ Error spoofing MAC addresses: {}", e);
+                    on_log_inner(m.clone());
+                    vec![m]
+                }
             }
         }));
     }
 
     if options.spoof_volume_id || options.spoof_volume_c_drive {
-        let dry_run = dry_run;
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             match volumeid_wrapper::change_volume_id("C", dry_run) {
-                Ok(message) => vec![message],
-                Err(e) => vec![format!("❌ Error changing Volume ID: {}", e)],
+                Ok(message) => {
+                    on_log_inner(message.clone());
+                    vec![message]
+                }
+                Err(e) => {
+                    let m = format!("❌ Error changing Volume ID: {}", e);
+                    on_log_inner(m.clone());
+                    vec![m]
+                }
             }
         }));
     }
 
     if options.clean_steam || options.clean_aggressive || has_granular_options() {
-        let dry_run = dry_run;
-        let kill_steam_processes = options.kill_steam_processes;
-        let kill_explorer = options.kill_explorer;
-        let delete_login_users_vdf = options.delete_login_users_vdf;
-        let delete_config_vdf = options.delete_config_vdf;
-        let delete_localconfig_vdf = options.delete_localconfig_vdf;
-        let delete_steam_appdata_vdf = options.delete_steam_appdata_vdf;
-        let delete_ssfn_files = options.delete_ssfn_files;
-        let delete_libraryfolders_vdf = options.delete_libraryfolders_vdf;
-        let delete_userdata_dir = options.delete_userdata_dir;
-        let delete_config_dir = options.delete_config_dir;
-        let delete_logs_dir = options.delete_logs_dir;
-        let delete_appcache_dir = options.delete_appcache_dir;
-        let delete_dump_dir = options.delete_dump_dir;
-        let delete_shadercache_dir = options.delete_shadercache_dir;
-        let delete_depotcache_dir = options.delete_depotcache_dir;
-        let delete_orphaned_game_folders = options.delete_orphaned_game_folders;
-        let delete_steam_appdata_dir = options.delete_steam_appdata_dir;
-        let delete_valve_locallow_dir = options.delete_valve_locallow_dir;
-        let delete_d3d_cache = options.delete_d3d_cache;
-        let delete_d3d_cache_contents = options.delete_d3d_cache_contents;
-        let delete_local_temp = options.delete_local_temp;
-        let delete_local_low_temp = options.delete_local_low_temp;
-        let delete_local_temp_contents = options.delete_local_temp_contents;
-        let delete_user_temp = options.delete_user_temp;
-        let delete_user_temp_contents = options.delete_user_temp_contents;
-        let delete_windows_temp = options.delete_windows_temp;
-        let delete_windows_temp_contents = options.delete_windows_temp_contents;
-        let delete_crash_dumps = options.delete_crash_dumps;
-        let delete_web_cache = options.delete_web_cache;
-        let delete_web_cache_contents = options.delete_web_cache_contents;
-        let delete_inet_cache = options.delete_inet_cache;
-        let delete_inet_cache_contents = options.delete_inet_cache_contents;
-        let delete_windows_caches = options.delete_windows_caches;
-        let delete_windows_caches_contents = options.delete_windows_caches_contents;
-        let delete_windows_explorer = options.delete_windows_explorer;
-        let delete_windows_explorer_contents = options.delete_windows_explorer_contents;
-        let delete_recent = options.delete_recent;
-        let delete_recent_contents = options.delete_recent_contents;
-        let delete_automatic_destinations = options.delete_automatic_destinations;
-        let delete_automatic_destinations_contents = options.delete_automatic_destinations_contents;
-        let delete_custom_destinations = options.delete_custom_destinations;
-        let delete_custom_destinations_contents = options.delete_custom_destinations_contents;
-        let delete_tracing_dir = options.delete_tracing_dir;
-        let delete_tracing_dir_contents = options.delete_tracing_dir_contents;
-        let delete_nvidia_cache = options.delete_nvidia_cache;
-        let delete_nvidia_cache_contents = options.delete_nvidia_cache_contents;
-        let delete_windows_prefetch = options.delete_windows_prefetch;
-        let delete_my_games = options.delete_my_games;
-        let delete_easyanticheat = options.delete_easyanticheat;
-        let delete_battleye = options.delete_battleye;
-        let delete_faceit = options.delete_faceit;
-
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
-            if options.clean_steam || options.clean_aggressive {
-                match file_cleaner::clean_cache(dry_run, delete_orphaned_game_folders) {
+            let messages = if options.clean_steam || options.clean_aggressive {
+                match file_cleaner::clean_cache(dry_run, options.delete_orphaned_game_folders) {
                     Ok(messages) => messages,
                     Err(e) => vec![format!("❌ Error cleaning Steam: {}", e)],
                 }
             } else {
-                // Granular file cleaning
                 file_cleaner::clean_granular(
                     dry_run,
-                    kill_steam_processes,
-                    kill_explorer,
-                    delete_login_users_vdf,
-                    delete_config_vdf,
-                    delete_localconfig_vdf,
-                    delete_steam_appdata_vdf,
-                    delete_ssfn_files,
-                    delete_libraryfolders_vdf,
-                    delete_userdata_dir,
-                    delete_config_dir,
-                    delete_logs_dir,
-                    delete_appcache_dir,
-                    delete_dump_dir,
-                    delete_shadercache_dir,
-                    delete_depotcache_dir,
-                    delete_orphaned_game_folders,
-                    delete_steam_appdata_dir,
-                    delete_valve_locallow_dir,
-                    delete_d3d_cache,
-                    delete_d3d_cache_contents,
-                    delete_local_temp,
-                    delete_local_low_temp,
-                    delete_local_temp_contents,
-                    delete_user_temp,
-                    delete_user_temp_contents,
-                    delete_windows_temp,
-                    delete_windows_temp_contents,
-                    delete_crash_dumps,
-                    delete_web_cache,
-                    delete_web_cache_contents,
-                    delete_inet_cache,
-                    delete_inet_cache_contents,
-                    delete_windows_caches,
-                    delete_windows_caches_contents,
-                    delete_windows_explorer,
-                    delete_windows_explorer_contents,
-                    delete_recent,
-                    delete_recent_contents,
-                    delete_automatic_destinations,
-                    delete_automatic_destinations_contents,
-                    delete_custom_destinations,
-                    delete_custom_destinations_contents,
-                    delete_tracing_dir,
-                    delete_tracing_dir_contents,
-                    delete_nvidia_cache,
-                    delete_nvidia_cache_contents,
-                    delete_windows_prefetch,
-                    delete_my_games,
-                    delete_easyanticheat,
-                    delete_battleye,
-                    delete_faceit
+                    options.kill_steam_processes,
+                    options.kill_explorer,
+                    options.delete_login_users_vdf,
+                    options.delete_config_vdf,
+                    options.delete_localconfig_vdf,
+                    options.delete_steam_appdata_vdf,
+                    options.delete_ssfn_files,
+                    options.delete_libraryfolders_vdf,
+                    options.delete_userdata_dir,
+                    options.delete_config_dir,
+                    options.delete_logs_dir,
+                    options.delete_appcache_dir,
+                    options.delete_dump_dir,
+                    options.delete_shadercache_dir,
+                    options.delete_depotcache_dir,
+                    options.delete_orphaned_game_folders,
+                    options.delete_steam_appdata_dir,
+                    options.delete_valve_locallow_dir,
+                    options.delete_d3d_cache,
+                    options.delete_d3d_cache_contents,
+                    options.delete_local_temp,
+                    options.delete_local_low_temp,
+                    options.delete_local_temp_contents,
+                    options.delete_user_temp,
+                    options.delete_user_temp_contents,
+                    options.delete_windows_temp,
+                    options.delete_windows_temp_contents,
+                    options.delete_crash_dumps,
+                    options.delete_web_cache,
+                    options.delete_web_cache_contents,
+                    options.delete_inet_cache,
+                    options.delete_inet_cache_contents,
+                    options.delete_windows_caches,
+                    options.delete_windows_caches_contents,
+                    options.delete_windows_explorer,
+                    options.delete_windows_explorer_contents,
+                    options.delete_recent,
+                    options.delete_recent_contents,
+                    options.delete_automatic_destinations,
+                    options.delete_automatic_destinations_contents,
+                    options.delete_custom_destinations,
+                    options.delete_custom_destinations_contents,
+                    options.delete_tracing_dir,
+                    options.delete_tracing_dir_contents,
+                    options.delete_nvidia_cache,
+                    options.delete_nvidia_cache_contents,
+                    options.delete_windows_prefetch,
+                    options.delete_my_games,
+                    options.delete_easyanticheat,
+                    options.delete_battleye,
+                    options.delete_faceit
                 )
-            }
+            };
+            for m in &messages { on_log_inner(m.clone()); }
+            messages
         }));
     }
 
@@ -430,21 +378,29 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
     for task in tasks {
         match task.await {
             Ok(logs) => results.extend(logs),
-            Err(e) => results.push(format!("❌ Task failed: {}", e)),
+            Err(e) => {
+                let m = format!("❌ Task failed: {}", e);
+                on_log(m.clone());
+                results.push(m);
+            }
         }
     }
 
-    if results.len() == 1 && dry_run {
-        results.push("ℹ️ No operations selected.".to_string());
-    } else if results.is_empty() {
-        results.push("ℹ️ No operations selected.".to_string());
+    if results.is_empty() || (results.len() == 1 && dry_run) {
+        let m = "ℹ️ No operations selected.".to_string();
+        on_log(m.clone());
+        results.push(m);
     }
 
     if dry_run {
-        results.push("--- END OF SIMULATION ---".to_string());
+        let m = "--- END OF SIMULATION ---".to_string();
+        on_log(m.clone());
+        results.push(m);
     } else {
-        results.push("-----------------------------------".to_string());
-        results.push("✅ All tasks completed. A restart is recommended.".to_string());
+        on_log("-----------------------------------".to_string());
+        let m = "✅ All tasks completed. A restart is recommended.".to_string();
+        on_log(m.clone());
+        results.push(m);
     }
 
     results
@@ -454,14 +410,19 @@ pub async fn run_all_selected(options: CleaningOptions) -> Vec<String> {
 pub async fn apply_hardware_profile(
     profile: crate::core::hardware_profile::HardwareProfile,
     dry_run: bool,
+    on_log: impl Fn(String) + Send + Sync + 'static,
 ) -> Vec<String> {
     let mut results = Vec::new();
+    let on_log = std::sync::Arc::new(on_log);
 
-    results.push(format!("━━━ Applying Profile: '{}' ━━━", profile.name));
-    results.push(format!("Created: {}", profile.created_at));
+    let m1 = format!("━━━ Applying Profile: '{}' ━━━", profile.name);
+    let m2 = format!("Created: {}", profile.created_at);
+    on_log(m1.clone()); results.push(m1);
+    on_log(m2.clone()); results.push(m2);
 
     if dry_run {
-        results.push("--- SIMULATION MODE (DRY RUN) ---".to_string());
+        let m = "--- SIMULATION MODE (DRY RUN) ---".to_string();
+        on_log(m.clone()); results.push(m);
     }
 
     // Run blocking operations in parallel
@@ -469,49 +430,75 @@ pub async fn apply_hardware_profile(
 
     // Apply MAC addresses
     if !profile.mac_addresses.is_empty() {
-        results.push(format!("[*] Applying {} MAC address(es)...", profile.mac_addresses.len()));
+        let m = format!("[*] Applying {} MAC address(es)...", profile.mac_addresses.len());
+        on_log(m.clone()); results.push(m);
         let mac_addresses = profile.mac_addresses.clone();
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             match mac_spoofer::spoof_mac_from_profile(&mac_addresses, dry_run) {
-                Ok(messages) => messages,
-                Err(e) => vec![format!("❌ Error applying MAC addresses: {}", e)],
+                Ok(messages) => {
+                    for m in &messages { on_log_inner(m.clone()); }
+                    messages
+                }
+                Err(e) => {
+                    let m = format!("❌ Error applying MAC addresses: {}", e);
+                    on_log_inner(m.clone());
+                    vec![m]
+                }
             }
         }));
     } else {
-        results.push("[!] No MAC addresses in profile.".to_string());
+        let m = "[!] No MAC addresses in profile.".to_string();
+        on_log(m.clone()); results.push(m);
     }
 
     // Apply Volume IDs
     if !profile.volume_ids.is_empty() {
-        results.push(format!("[*] Applying {} Volume ID(s)...", profile.volume_ids.len()));
+        let m = format!("[*] Applying {} Volume ID(s)...", profile.volume_ids.len());
+        on_log(m.clone()); results.push(m);
         let volume_ids = profile.volume_ids.clone();
+        let on_log_inner = on_log.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             let mut logs = Vec::new();
             for (drive, vol_id) in &volume_ids {
                 match volumeid_wrapper::change_volume_id_to_specific(drive, vol_id, dry_run) {
-                    Ok(message) => logs.push(message),
-                    Err(e) => logs.push(format!("❌ Error setting Volume ID for {}: {}", drive, e)),
+                    Ok(message) => {
+                        on_log_inner(message.clone());
+                        logs.push(message);
+                    }
+                    Err(e) => {
+                        let m = format!("❌ Error setting Volume ID for {}: {}", drive, e);
+                        on_log_inner(m.clone());
+                        logs.push(m);
+                    }
                 }
             }
             logs
         }));
     } else {
-        results.push("[!] No Volume IDs in profile.".to_string());
+        let m = "[!] No Volume IDs in profile.".to_string();
+        on_log(m.clone()); results.push(m);
     }
 
     // Wait for all tasks to complete and collect results
     for task in tasks {
         match task.await {
             Ok(logs) => results.extend(logs),
-            Err(e) => results.push(format!("❌ Task failed: {}", e)),
+            Err(e) => {
+                let m = format!("❌ Task failed: {}", e);
+                on_log(m.clone());
+                results.push(m);
+            }
         }
     }
 
     if dry_run {
-        results.push("--- END OF SIMULATION ---".to_string());
+        let m = "--- END OF SIMULATION ---".to_string();
+        on_log(m.clone()); results.push(m);
     } else {
-        results.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━".to_string());
-        results.push("✅ Profile applied. A restart is recommended.".to_string());
+        on_log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━".to_string());
+        let m = "✅ Profile applied. A restart is recommended.".to_string();
+        on_log(m.clone()); results.push(m);
     }
 
     results

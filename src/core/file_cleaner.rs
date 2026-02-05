@@ -19,7 +19,10 @@ pub fn kill_process(process_name: &str, dry_run: bool, logs: &mut Vec<String>) {
         return;
     }
 
-    logs.push(format!("[Process] Terminating: {}", process_name));
+    logs.push(format!(
+        "[Process] Executing: taskkill /F /IM {}",
+        process_name
+    ));
     match Command::new("taskkill")
         .args(["/F", "/IM", process_name])
         .output()
@@ -57,6 +60,10 @@ pub fn try_delete_dir_contents(path: &str, dry_run: bool, logs: &mut Vec<String>
                     continue;
                 }
 
+                logs.push(format!(
+                    "[System] Removing file attributes (R/S/H): {}",
+                    entry_path.display()
+                ));
                 let _ = Command::new("attrib")
                     .args(&["-R", "-S", "-H", entry_path.to_str().unwrap_or("")])
                     .output();
@@ -95,6 +102,10 @@ pub fn try_delete(path: &str, dry_run: bool, logs: &mut Vec<String>) {
             return;
         }
 
+        logs.push(format!(
+            "[System] Removing file attributes (R/S/H): {}",
+            path
+        ));
         let _ = Command::new("attrib")
             .args(&["-R", "-S", "-H", path])
             .output();
@@ -454,6 +465,7 @@ pub fn clean_cache(dry_run: bool, delete_orphaned_game_folders: bool) -> io::Res
     try_delete_dir_contents(&format!("{}\\config", steam_root), dry_run, &mut logs);
 
     if !dry_run {
+        logs.push("[System] Restarting explorer.exe...".to_string());
         let _ = Command::new("explorer").spawn();
         logs.push("Cache cleanup complete.".to_string());
     }
@@ -807,6 +819,7 @@ pub fn clean_granular(
     }
 
     if !dry_run {
+        logs.push("[System] Restarting explorer.exe...".to_string());
         let _ = Command::new("explorer").spawn();
         logs.push("Cache cleanup complete.".to_string());
     }
