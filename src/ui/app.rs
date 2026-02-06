@@ -1,4 +1,4 @@
-use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Column, Row, Space};
+use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Column, Row, Space, scrollable::Id};
 use iced::{Application, Color, Command, Element, Length, Subscription, Theme, time, alignment::Horizontal};
 use std::time::Duration;
 use tinyfiledialogs as tfd;
@@ -35,6 +35,7 @@ pub struct CleanerApp {
     current_language: Language,
     translations: Translations,
     language_selector_open: bool,
+    scroll_id: Id,
 }
 
 #[derive(Default)]
@@ -211,6 +212,7 @@ impl Application for CleanerApp {
         let profile_names = profile_manager.profile_names();
         let current_language = Language::English;
         let translations = i18n::load_translations(current_language);
+        let scroll_id = scrollable::Id::new("log_scroll");
 
         (
             Self {
@@ -318,6 +320,7 @@ impl Application for CleanerApp {
                 current_language,
                 translations,
                 language_selector_open: false,
+                scroll_id,
             },
             Command::none(),
         )
@@ -1070,6 +1073,7 @@ impl Application for CleanerApp {
                     }
 
                     self.state = State::Cleaning;
+                    self.custom_clean_open = false;
                     self.log_messages = vec![self.translations.common.starting_custom_cleaning.clone()];
                     let options = self.custom_clean_options;
 
@@ -1109,7 +1113,7 @@ impl Application for CleanerApp {
             }
             Message::LogMessage(log) => {
                 self.log_messages.push(log);
-                Command::none()
+                scrollable::scroll_to(self.scroll_id.clone(), iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX })
             }
         }
     }
@@ -1318,7 +1322,7 @@ impl CleanerApp {
             col.push(text(msg.clone()).font(iced::Font::MONOSPACE).size(13))
         });
 
-        let console_box = container(scrollable(log_output))
+        let console_box = container(scrollable(log_output).id(self.scroll_id.clone()))
             .style(iced::theme::Container::Custom(Box::new(style::ConsoleContainerStyle { custom_colors: active_colors })))
             .padding(15)
             .width(Length::Fill)
